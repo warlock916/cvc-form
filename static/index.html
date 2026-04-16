@@ -162,7 +162,7 @@ table.riepilogo td{padding:6px 9px;}
         <option value="IstruttoriC3">Istruttori C3</option>
       </select></div>
     <div class="form-row"><label>Password Turno</label>
-      <input type="password" id="l-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')doTurnoLogin()"></div>
+      <input type="password" id="l-pwd" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doTurnoLogin()"></div>
     <div class="primo-extra" id="primo-extra">
       <p style="font-size:.81rem;color:#666;margin-bottom:10px;">Prima apertura: inserisci i dati per creare il turno.</p>
       <div class="form-row"><label>Capo Turno</label><input type="text" id="l-capo" placeholder="Nome e Cognome"></div>
@@ -229,7 +229,8 @@ table.riepilogo td{padding:6px 9px;}
 <div id="page-admin" class="page">
   <div id="admin-gate" class="card admin-gate">
     <h2>&#128274; Accesso Admin</h2>
-    <input type="password" id="admin-pwd" placeholder="Password admin" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    <input type="text" name="fakeuser" style="display:none;" aria-hidden="true">
+    <input type="password" id="admin-pwd" placeholder="Password admin" autocomplete="new-password" name="admin_pwd_field" onkeydown="if(event.key==='Enter')doAdminLogin()">
     <div class="btn-row" style="justify-content:center;margin-top:10px;">
       <button class="btn btn-primary" onclick="doAdminLogin()">Accedi</button>
       <button class="btn btn-outline btn-sm" onclick="showPage('login')">Indietro</button>
@@ -698,6 +699,8 @@ function showPage(name,btn){
   if(btn)btn.classList.add('active');
   if(name==='operativo')renderAllievoOp();
   if(name==='admin')showAdminSection();
+  // Pulisce il campo password admin quando si cambia pagina, evita il popup "aggiorna password"
+  if(name!=='admin'){var ap=document.getElementById('admin-pwd');if(ap&&!adminToken)ap.value='';}
 }
 
 async function showAdminSection(){
