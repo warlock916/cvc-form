@@ -223,6 +223,14 @@ def init_db():
             updated_at {TS},
             UNIQUE(allievo_id, vkey)
         )''')
+        cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni_op (
+            id         {AI} PRIMARY KEY {AIP},
+            allievo_id INTEGER NOT NULL,
+            vkey       TEXT NOT NULL,
+            valore     TEXT,
+            updated_at {TS},
+            UNIQUE(allievo_id, vkey)
+        )''')
         cur.execute(f'''CREATE TABLE IF NOT EXISTS sessions (
             token      TEXT PRIMARY KEY,
             tipo       TEXT DEFAULT 'admin',
@@ -398,7 +406,10 @@ def get_allievi(turno):
             cur.execute(f'SELECT vkey, valore FROM valutazioni WHERE allievo_id={PH}', (aid,))
             grades = {r[0] if USE_PG else r['vkey']: r[1] if USE_PG else r['valore']
                       for r in cur.fetchall()}
-            result.append({**a, 'grades': grades})
+            cur.execute(f'SELECT vkey, valore FROM valutazioni_op WHERE allievo_id={PH}', (aid,))
+            op_grades = {r[0] if USE_PG else r['vkey']: r[1] if USE_PG else r['valore']
+                         for r in cur.fetchall()}
+            result.append({**a, 'grades': grades, 'op_grades': op_grades})
 
     return jsonify({'allievi': result})
 
@@ -497,7 +508,36 @@ def save_valutazione(allievo_id):
         conn.commit()
     return jsonify({'ok': True})
 
-# ── Foto ────────────────────────────────────────────────────────────────────────
+# ── Valutazioni Operative ─────────────────────────────────────────────────────
+@app.route('/api/valutazioni-op/<int:allievo_id>', methods=['PUT'])
+def save_valutazione_op(allievo_id):
+    token = request.headers.get('X-Auth-Token', '')
+    d = request.json or {}
+    grades = d.get('grades', {})
+
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(f'SELECT turno, corso FROM allievi WHERE id={PH}', (allievo_id,))
+        row = cur.fetchone()
+        if not row: return jsonify({'error': 'Allievo non trovato'}), 404
+        turno = row[0] if USE_PG else row['turno']
+        corso = row[1] if USE_PG else row['corso']
+        if not check_turno_auth(turno, corso, token):
+            return jsonify({'error': 'Non autorizzato'}), 401
+
+        for vkey, valore in grades.items():
+            if valore not in VOTI_VALIDI and valore != '':
+                continue
+            cur.execute(f'SELECT id FROM valutazioni_op WHERE allievo_id={PH} AND vkey={PH}', (allievo_id, vkey))
+            existing = cur.fetchone()
+            if existing:
+                cur.execute(f'UPDATE valutazioni_op SET valore={PH} WHERE allievo_id={PH} AND vkey={PH}',
+                            (valore, allievo_id, vkey))
+            else:
+                cur.execute(f'INSERT INTO valutazioni_op(allievo_id,vkey,valore) VALUES({PH},{PH},{PH})',
+                            (allievo_id, vkey, valore))
+        conn.commit()
+    return jsonify({'ok': True})
 ALLOWED_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 @app.route('/api/foto/<int:allievo_id>', methods=['POST'])
