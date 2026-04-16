@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CVC – Valutazione Formazione Istruttori</title>
+<style>
+  :root {
+    --blue: #1a4a8a;
+    --blue-light: #2563eb;
+    --blue-pale: #dbeafe;
+    --teal: #0d9488;
+    --teal-pale: #ccfbf1;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --red: #dc2626;
+    --red-pale: #fee2e2;
+    --yellow: #d97706;
+    --yellow-pale: #fef3c7;
+    --green: #16a34a;
+    --green-pale: #dcfce7;
+    --orange: #ea580c;
+    --orange-pale: #ffedd5;
+    --white: #ffffff;
+    --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-800);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, var(--blue) 0%, #1e3a6e 100%);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header img { height: 48px; border-radius: 6px; }
+  header h1 { font-size: 1.2rem; font-weight: 700; line-height: 1.3; }
+  header p { font-size: 0.78rem; opacity: 0.8; margin-top: 2px; }
+
+  /* ── TAB NAV ── */
+  .tab-nav {
+    background: var(--white);
+    padding: 0 16px;
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--gray-200);
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .tab-btn {
+    padding: 12px 18px;
+    border: none;
+    background: none;
+    color: var(--gray-600);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .tab-btn:hover { color: var(--blue); background: var(--blue-pale); }
+  .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); background: var(--blue-pale); }
+
+  /* ── MAIN CONTENT ── */
+  .tab-panel { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .tab-panel.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--blue);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title span { font-size: 1.1rem; }
+
+  /* ── STUDENT MANAGEMENT ── */
+  .student-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .student-bar input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+    padding: 9px 13px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .student-bar input[type="text"]:focus { border-color: var(--blue-light); }
+  .btn {
+    padding: 9px 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: var(--blue-light); }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-success { background: var(--green); color: white; }
+  .btn-success:hover { background: #15803d; }
+  .btn-teal { background: var(--teal); color: white; }
+  .btn-teal:hover { background: #0f766e; }
+  .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+  .btn-outline {
+    background: white;
+    border: 2px solid var(--gray-200);
+    color: var(--gray-700);
+  }
+  .btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+
+  /* ── STUDENT TABS ── */
+  .student-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .student-tab {
+    padding: 7px 14px;
+    border: 2px solid var(--gray-200);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: white;
+    color: var(--gray-700);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .student-tab:hover { border-color: var(--blue-light); color: var(--blue); }
+  .student-tab.active { background: var(--blue); border-color: var(--blue); color: white; }
+  .student-tab .del-btn {
+    background: rgba(255,255,255,0.3);
+    border: none;
+    color: inherit;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+  }
+  .student-tab .del-btn:hover { background: rgba(220,38,38,0.8); color: white; }
+
+  /* ── PHOTO SECTION ── */
+  .photo-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--gray-50);
+    border: 2px dashed var(--gray-300);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .photo-section:hover { border-color: var(--blue-light); }
+  .photo-preview {
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--blue-pale);
+    background: var(--gray-200);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    overflow: hidden;
+  }
+  .photo-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .photo-actions { display: flex; flex-direction: column; gap: 6px; }
+  .photo-actions label {
+    padding: 7px 14px;
+    border: 2px solid var(--blue);
+    border-radius: var(--radius);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--blue);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .photo-actions label:hover { background: var(--blue); color: white; }
+  .photo-actions input[type="file"] { display: none; }
+  .photo-name { font-size: 0.9rem; color: var(--gray-600); font-style: italic; }
+
+  /* ── BLOCCO NOTE ── */
+  .note-section {
+    background: #fffbeb;
+    border-left: 4px solid var(--yellow);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .note-section label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--yellow);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note-section textarea {
+    width: 100%;
+    min-height: 90px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 10px;
+    font-size: 0.88rem;
+    resize: vertical;
+    background: white;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+  .note-section textarea:focus { border-color: var(--yellow); }
+
+  /* ── EVALUATION TABLE ── */
+  .eval-section { overflow-x: auto; }
+  .eval-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .eval-table th {
+    background: var(--blue);
+    color: white;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .eval-table th.center { text-align: center; }
+  .eval-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gray-200);
+    vertical-align: middle;
+  }
+  .eval-table tr:hover td { background: var(--gray-50); }
+  .macro-row td {
+    background: var(--blue-pale);
+    font-weight: 700;
+    color: var(--blue);
+    padding-top: 12px;
+    padding-bottom: 6px;
+  }
+  .semaforo-row td {
+    background: var(--gray-100);
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
+  .total-row td {
+    background: var(--gray-800);
+    color: white;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 12px;
+  }
+
+  /* ── SELECT VOTO ── */
+  .voto-select {
+    padding: 5px 10px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 0.82rem;
+    min-width: 130px;
+    cursor: pointer;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .voto-select:focus { border-color: var(--blue-light); }
+  .voto-select.non-svolto { background: #f1f5f9; color: #64748b; }
+  .voto-select.non-raggiunto { background: var(--red-pale); color: var(--red); border-color: var(--red); }
+  .voto-select.da-affinare { background: var(--yellow-pale); color: var(--yellow); border-color: var(--yellow); }
+  .voto-select.sufficiente { background: #fef9c3; color: #854d0e; border-color: #ca8a04; }
+  .voto-select.buono { background: var(--teal-pale); color: var(--teal); border-color: var(--teal); }
+  .voto-select.ottimo { background: var(--green-pale); color: var(--green); border-color: var(--green); }
+
+  /* ── SEMAFORO BADGE ── */
+  .semaforo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+  .semaforo-badge::before {
+    content: '';
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sem-rosso { background: var(--red-pale); color: var(--red); }
+  .sem-rosso::before { background: var(--red); }
+  .sem-giallo { background: var(--yellow-pale); color: var(--yellow); }
+  .sem-giallo::before { background: var(--yellow); }
+  .sem-verde { background: var(--green-pale); color: var(--green); }
+  .sem-verde::before { background: var(--green); }
+  .sem-vuoto { background: var(--gray-100); color: var(--gray-600); }
+  .sem-vuoto::before { background: var(--gray-300); }
+
+  /* ── TOTAL SCORE ── */
+  .score-box {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    background: white;
+    border: 3px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 12px 20px;
+    min-width: 90px;
+    transition: all 0.3s;
+  }
+  .score-box .val { font-size: 1.8rem; font-weight: 800; color: var(--blue); }
+  .score-box .lbl { font-size: 0.7rem; color: var(--gray-600); font-weight: 600; }
+  .score-box.pass { border-color: var(--green); }
+  .score-box.pass .val { color: var(--green); }
+  .score-box.fail { border-color: var(--red); }
+  .score-box.fail .val { color: var(--red); }
+
+  /* ── OPERATIVO TABLE ── */
+  .op-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .op-table th { background: var(--teal); color: white; padding: 9px 12px; text-align: left; font-weight: 600; }
+  .op-table td { padding: 7px 12px; border-bottom: 1px solid var(--gray-200); vertical-align: middle; }
+  .op-table tr:hover td { background: var(--teal-pale); }
+  .op-macro td {
+    background: var(--teal-pale);
+    font-weight: 700;
+    color: var(--teal);
+    padding: 10px 12px;
+  }
+
+  /* ── SUMMARY GRID ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-top: 12px;
+  }
+  .summary-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .summary-card .s-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .summary-card .s-name img {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--blue-pale);
+  }
+  .summary-card .s-score { font-size: 1.6rem; font-weight: 800; color: var(--blue); }
+  .summary-card.pass-card { border-color: var(--green); }
+  .summary-card.pass-card .s-score { color: var(--green); }
+  .summary-card.fail-card { border-color: var(--red); }
+  .summary-card.fail-card .s-score { color: var(--red); }
+
+  /* ── PESI TABLE ── */
+  .pesi-table { width: 100%; max-width: 400px; border-collapse: collapse; font-size: 0.88rem; }
+  .pesi-table th { background: var(--gray-700); color: white; padding: 10px 16px; text-align: left; }
+  .pesi-table td { padding: 9px 16px; border-bottom: 1px solid var(--gray-200); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--gray-600);
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* ── SAVE BANNER ── */
+  .save-banner {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--green);
+    color: white;
+    padding: 12px 20px;
+    border-radius: var(--radius-lg);
+    font-size: 0.88rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    align-items: center;
+    gap: 8px;
+    z-index: 200;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    header h1 { font-size: 1rem; }
+    .tab-panel { padding: 12px; }
+    .card { padding: 14px; }
+    .eval-table, .op-table { font-size: 0.76rem; }
+  }
+
+  /* ── CRITERIA TEXT ── */
+  .criteria-text {
+    font-size: 0.8rem;
+    color: var(--gray-700);
+    line-height: 1.5;
+    max-width: 420px;
+  }
+  .peso-badge {
+    display: inline-block;
+    background: var(--gray-700);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .not-promoted-warning {
+    background: var(--red-pale);
+    border: 2px solid var(--red);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--red);
+    margin-bottom: 12px;
+    display: none;
+  }
+  .not-promoted-warning.show { display: flex; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div style="font-size:2rem;">⛵</div>
+  </div>
+  <div>
+    <h1>CVC – Valutazione Formazione Istruttori</h1>
+    <p>ADV · Istruttori · Istruttori C3 — Sistema di valutazione corsisti</p>
+  </div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('adv')">📋 ADV</button>
+  <button class="tab-btn" onclick="showTab('adv-op')">🚤 ADV Operativo</button>
+  <button class="tab-btn" onclick="showTab('is')">🎓 Istruttori</button>
+  <button class="tab-btn" onclick="showTab('is-op')">⛵ Istruttori Operativo</button>
+  <button class="tab-btn" onclick="showTab('c3')">🧭 Istruttori C3</button>
+  <button class="tab-btn" onclick="showTab('pesi')">⚖️ Pesi</button>
+</nav>
+
+<div id="save-banner" class="save-banner">✅ Salvato automaticamente</div>
+
+<!-- ════════════════════════════════════════
+     TAB: ADV
+════════════════════════════════════════ -->
+<div id="tab-adv" class="tab-panel active">
+  <div class="card">
+    <div class="card-title"><span>📋</span> Valutazione Conclusiva Corso ADV</div>
+
+    <div class="student-bar">
+      <input type="text" id="adv-new-name" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')addStudent('adv')">
+      <button class="btn btn-primary" onclick="addStudent('adv')">➕ Aggiungi allievo</button>
+      <button class="btn btn-success btn-sm" onclick="exportCSV('adv')">📥 Esporta CSV</button>
+    </div>
+
+    <div id="adv-students" class="student-tabs"></div>
+    <div id="adv-content"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     TAB: ADV OPERATIVO
+════════════════════════════════════════ -->
+<div id="tab-adv-op" class="tab-panel">
+  <div class="card">
+    <div class="card-title"><span>🚤</span> Valutazione Operativa ADV</div>
+
+    <div class="student-bar">
+      <input type="text" id="adv-op-new-name" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')addStudent('adv-op')">
+      <button class="btn btn-primary" onclick="addStudent('adv-op')">➕ Aggiungi allievo</button>
+      <button class="btn btn-success btn-sm" onclick="exportCSV('adv-op')">📥 Esporta CSV</button>
+    </div>
+
+    <div id="adv-op-students" class="student-tabs"></div>
+    <div id="adv-op-content"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     TAB: ISTRUTTORI
+════════════════════════════════════════ -->
+<div id="tab-is" class="tab-panel">
+  <div class="card">
+    <div class="card-title"><span>🎓</span> Valutazione Conclusiva Corso Istruttori</div>
+    <p style="font-size:0.8rem;color:var(--red);font-weight:600;margin-bottom:14px;">
+      ⚠️ Allievo NON PROMOSSO se le voci 1 (Navigazione) e 2 (Mezzi e sicurezza) sono entrambe rosse o gialle
+    </p>
+
+    <div class="student-bar">
+      <input type="text" id="is-new-name" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')addStudent('is')">
+      <button class="btn btn-primary" onclick="addStudent('is')">➕ Aggiungi allievo</button>
+      <button class="btn btn-success btn-sm" onclick="exportCSV('is')">📥 Esporta CSV</button>
+    </div>
+
+    <div id="is-students" class="student-tabs"></div>
+    <div id="is-content"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     TAB: ISTRUTTORI OPERATIVO
+════════════════════════════════════════ -->
+<div id="tab-is-op" class="tab-panel">
+  <div class="card">
+    <div class="card-title"><span>⛵</span> Valutazione Operativa Istruttori</div>
+
+    <div class="student-bar">
+      <input type="text" id="is-op-new-name" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')addStudent('is-op')">
+      <button class="btn btn-primary" onclick="addStudent('is-op')">➕ Aggiungi allievo</button>
+      <button class="btn btn-success btn-sm" onclick="exportCSV('is-op')">📥 Esporta CSV</button>
+    </div>
+
+    <div id="is-op-students" class="student-tabs"></div>
+    <div id="is-op-content"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     TAB: ISTRUTTORI C3
+════════════════════════════════════════ -->
+<div id="tab-c3" class="tab-panel">
+  <div class="card">
+    <div class="card-title"><span>🧭</span> Valutazione Conclusiva Corso Istruttori C3</div>
+    <p style="font-size:0.8rem;color:var(--red);font-weight:600;margin-bottom:14px;">
+      ⚠️ Allievo NON PROMOSSO se le voci 1 (Navigazione) e 2 (Procedure sicurezza) sono entrambe rosse o gialle
+    </p>
+
+    <div class="student-bar">
+      <input type="text" id="c3-new-name" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')addStudent('c3')">
+      <button class="btn btn-primary" onclick="addStudent('c3')">➕ Aggiungi allievo</button>
+      <button class="btn btn-success btn-sm" onclick="exportCSV('c3')">📥 Esporta CSV</button>
+    </div>
+
+    <div id="c3-students" class="student-tabs"></div>
+    <div id="c3-content"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     TAB: PESI
+════════════════════════════════════════ -->
+<div id="tab-pesi" class="tab-panel">
+  <div class="card">
+    <div class="card-title"><span>⚖️</span> Tabella Pesi (Gruppo di Merito)</div>
+    <p style="font-size:0.85rem;color:var(--gray-600);margin-bottom:16px;">
+      Ogni indicatore ha un proprio peso. Il voto viene moltiplicato per il peso della riga.
+    </p>
+    <table class="pesi-table">
+      <thead><tr><th>Gruppo di Merito</th><th>Punteggio</th></tr></thead>
+      <tbody>
+        <tr><td>Non svolto</td><td>2</td></tr>
+        <tr><td>Non Raggiunto</td><td>0</td></tr>
+        <tr><td>Da Affinare</td><td>1</td></tr>
+        <tr><td>Sufficiente</td><td>2</td></tr>
+        <tr><td>Buono</td><td>3</td></tr>
+        <tr><td>Ottimo</td><td>4</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:20px;padding:14px;background:var(--blue-pale);border-radius:var(--radius);font-size:0.85rem;color:var(--blue);">
+      <strong>Formula:</strong> Totale allievo = Σ (Peso riga × Punteggio voto)<br>
+      <strong>Soglia minima:</strong> 66 punti per Istruttori e C3
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>🚦</span> Semaforo Sezioni</div>
+    <p style="font-size:0.85rem;color:var(--gray-600);margin-bottom:16px;">
+      Il semaforo di ogni macro sezione indica il grado di raggiungimento degli obiettivi.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:450px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="semaforo-badge sem-rosso">🔴 Rosso</span>
+        <span style="font-size:0.85rem;">Punteggio sezione &lt; 50% del massimo</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="semaforo-badge sem-giallo">🟡 Giallo</span>
+        <span style="font-size:0.85rem;">Punteggio sezione tra 50% e 75% del massimo</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="semaforo-badge sem-verde">🟢 Verde</span>
+        <span style="font-size:0.85rem;">Punteggio sezione &gt; 75% del massimo</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// DATA DEFINITIONS
+// ══════════════════════════════════════════════════════════════
+
+const VOTI = ['', 'Non svolto', 'Non Raggiunto', 'Da Affinare', 'Sufficiente', 'Buono', 'Ottimo'];
+const PESI = { '': 0, 'Non svolto': 2, 'Non Raggiunto': 0, 'Da Affinare': 1, 'Sufficiente': 2, 'Buono': 3, 'Ottimo': 4 };
+const VOTO_CLASS = { '': '', 'Non svolto': 'non-svolto', 'Non Raggiunto': 'non-raggiunto', 'Da Affinare': 'da-affinare', 'Sufficiente': 'sufficiente', 'Buono': 'buono', 'Ottimo': 'ottimo' };
+
+// ── ADV SCHEMA ──
+const ADV_SCHEMA = [
+  { macro: '1. Navigazione a vela', items: [
+    { peso: 2, desc: "È in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato. (T) È in grado di valutare e navigare nelle zone più sicure, rispettando i perimetri di navigazione (SN)" },
+    { peso: 3, desc: "È in grado di eseguire le manovre fondamentali (gavitello, ancoraggio, regolazione e cambio velatura) prevedendo i comportamenti della barca e dell'equipaggio per garantirne la sufficiente sicurezza" },
+    { peso: 3, desc: "È in grado di eseguire le manovre fondamentali (accosto ai mezzi, prende gavitelli, quickstop, ancoraggi, adegua velatura) con metodo e consapevolezza, avendo in chiaro l'obiettivo dell'esercizio (SN+VI)" },
+  ]},
+  { macro: '2. Mezzi e procedure di sicurezza', items: [
+    { peso: 2, desc: "È in grado di preparare i mezzi di sicurezza sotto tutti i punti di vista (sgotto, rabbocco, dotazioni), accendere, spegnere il motore e l'uso dell'invertitore nel rispetto delle norme ambientali" },
+    { peso: 3, desc: "È in grado di collaborare con l'istruttore durante le manovre di sicurezza (lancio cima e uso capra), essendo consapevole della manovra e dei rischi. Il governo dei mezzi di sicurezza rimane in carico solo all'istruttore." },
+    { peso: 3, desc: "Si comporta coerentemente alle procedure di sicurezza, utilizzando attrezzature e comportamenti atti a prevenire l'emergenza, in mare e a terra" },
+  ]},
+  { macro: '3. Didattica alla lavagna e in mare', items: [
+    { peso: 2, desc: "È in grado di comprendere le indicazioni didattiche del CT e fare da facilitatore agli allievi" },
+  ]},
+  { macro: '4. Capacità gestionale e lavoro in team', items: [
+    { peso: 2, desc: "È in grado di supportare il gruppo istruttori sia a terra che in mare al fine di facilitare il raggiungimento degli obiettivi da essi comunicati per le attività a terra e a mare" },
+    { peso: 2, desc: "È disponibile ad accrescere la propria esperienza collaborando con il team istruttori AdV" },
+    { peso: 1, desc: "Condivide e promuove le norme di comportamento in rispetto delle persone (carta dei valori, inclusione, dell'ambiente e della sostenibilità)" },
+  ]},
+  { macro: '5. Consapevolezza del ruolo – Motivazione Impegno e Disponibilità', items: [
+    { peso: 2, desc: "È consapevole di essere modello di riferimento a terra e a mare, e quindi coerente nei comportamenti (atteggiamento e abbigliamento)" },
+    { peso: 2, desc: "È in grado di mantenere la calma in situazioni di stress, sostiene e incoraggia gli altri, garantendo anche l'inclusione" },
+    { peso: 2, desc: "È sempre un elemento proattivo su quello che c'è da fare, non si tira indietro o delega ad altri" },
+  ]},
+  { macro: '6. Capacità organizzative e aspetti logistici', items: [
+    { peso: 2, desc: "È in grado di supportare e facilitare le attività a mare (scalo, caletta, veleria) e a terra (orari) gestendo la comandata (cucina, sala e bagni)" },
+    { peso: 1, desc: "È in grado di prevenire attraverso le sue verifiche e risolvere piccole avarie coordinandosi in primis con il suo CT e poi le funzioni dello staff" },
+    { peso: 1, desc: "Conosce le procedure di prevenzione (incendi e infortuni) ed emergenza (incendio, infortuni) procedure a terra e a mare" },
+  ]},
+];
+
+// ── ADV OPERATIVO SCHEMA ──
+const ADV_OP_SCHEMA = [
+  { macro: '1a. Condurre in autonomia e sicurezza deriva/cab', items: [
+    'Armo/disarmo imbarcazione', 'Adeguamento velatura, terzaroli, solo Fiocco/randa',
+    'Partenza e arrivo gavitello', 'Accosti barca alla fonda', 'Accosti in navigazione',
+    'Accosti in banchina', 'Barca ferma', 'MOB', 'Panna',
+    'Terminologia e gergo nautico', 'Riconoscimento perimetri navigazione/pilotaggio',
+  ]},
+  { macro: '1b. Condurre in autonomia e sicurezza deriva', items: [
+    'Scuffia e raddrizzamento', 'Navigazione solo fiocco / solo randa',
+    'Partenza e arrivo spiaggia', 'Navigazione senza timone',
+  ]},
+  { macro: '1c. Condurre in autonomia e sicurezza cabinato', items: [
+    'Quick stop', 'Navigazione solo fiocco / solo randa', 'Ormeggio e tonneggio',
+    'Rimorchio a vela', 'Ancoraggio', 'La carta nautica', 'Navigazione in flottiglia',
+  ]},
+  { macro: '2. Supporto mezzi e procedure di sicurezza', items: [
+    'Preparazione mezzi', 'Lancio cima', 'Collabora alle manovre di assistenza',
+  ]},
+  { macro: '3. Didattica alla lavagna e in mare', items: [
+    'È in grado di navigare in posizione di maggior sicurezza',
+    'È in grado di comunicare con gli istruttori e con la flotta',
+    "È in grado di ricondurre l'intera flotta all'esercizio proposto",
+  ]},
+  { macro: '4. Capacità gestionale e lavoro in team (AdV di giornata)', items: [
+    'Capacità di lavorare in team', 'Sa essere di esempio', "Favorisce l'inclusione e il rispetto",
+  ]},
+  { macro: '5. Consapevolezza del ruolo – Motivazione Impegno e Disponibilità', items: [
+    'Motivazione', 'Impegno', 'Disponibilità',
+    'Gestisce le relazioni con rispetto, ottiene e dà collaborazione, consenso degli altri',
+    'Attua le norme di vita in rispetto della sicurezza e prevenzioni incidenti',
+  ]},
+  { macro: '6. Capacità organizzative e aspetti logistici (AdV di giornata)', items: [
+    'Gestione piccole manutenzioni e avarie (es. reinserimento borsa boma derive)',
+    'Gestione comandata', 'Gestione comandata base',
+    'Gestione scalo (avarie, efficienza barche, pulizia e ordine scalo)',
+    'Conosce il manuale AT per la gestione della cucina', 'Gestione caletta',
+  ]},
+];
+
+// ── ISTRUTTORI SCHEMA ──
+const IS_SCHEMA = [
+  { macro: '1. Navigazione a vela', items: [
+    { peso: 2, desc: "È in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato. (T) È in grado di valutare e navigare nelle zone più sicure, rispettando i perimetri di navigazione (SN)" },
+    { peso: 3, desc: "È in grado di eseguire costantemente tutte le manovre fondamentali (tra cui gavitello, ancoraggio, quickstop), con regolazioni e velatura adeguata, con una buona visione a 360°, garantendo la totale sicurezza dell'imbarcazione e dell'equipaggio" },
+    { peso: 3, desc: "È in grado di eseguire tutte le manovre fondamentali, in ogni condizione, con metodo e cognizione di causa, avendo sempre in chiaro via di fuga e obiettivo esercizio (SN+VI)" },
+  ]},
+  { macro: '2. Mezzi e procedure di sicurezza', items: [
+    { peso: 2, desc: "È in grado di condurre ed eseguire le manovre base (accosti e rotazione 360° oraria) in autonomia e sufficiente sicurezza sia con il gozzo che con il gommone" },
+    { peso: 3, desc: "È in grado di impostare una manovra di avvicinamento e relativa manovra di assistenza con metodo e cognizione di causa. Ha sempre in chiaro la via di fuga." },
+    { peso: 3, desc: "È in grado di mantenere il controllo del mezzo senza diventare pericoloso per sé e per gli assistiti" },
+  ]},
+  { macro: '3. Didattica alla lavagna e in mare', items: [
+    { peso: 3, desc: "È in grado di organizzare i contenuti di un argomento del corso, avendone sufficiente conoscenza per individuarne i punti chiave" },
+    { peso: 3, desc: "È in grado di comunicare con sufficiente efficacia i punti chiave di quell'argomento (chiarezza espositiva), gestendo lo spazio della lavagna con parole e disegni chiari e ordinati" },
+    { peso: 1, desc: "È in grado di valutare se l'obiettivo didattico è stato raggiunto" },
+  ]},
+  { macro: '4. Capacità gestionale e lavoro in team – Organizzazione e Comunicazione', items: [
+    { peso: 2, desc: "È in grado di lavorare in team per il raggiungimento dell'obiettivo comune" },
+    { peso: 2, desc: "È in grado di organizzare, gestire e comunicare una serie di esercizi a mare secondo l'obiettivo dichiarato a lezione e nei tempi stabiliti" },
+    { peso: 1, desc: "È disponibile a condividere la propria esperienza nautica a disposizione del team" },
+  ]},
+  { macro: '5. Consapevolezza del ruolo – Responsabilità, Motivazione Impegno e Disponibilità', items: [
+    { peso: 2, desc: "Crede in ciò che sta facendo e nel ruolo dell'istruttore, come modello di riferimento (atteggiamento e abbigliamento) e non come privilegio. Dimostrando di comprendere le responsabilità annesse al ruolo, condividendo e promuovendo le norme di comportamento in rispetto delle persone (carta dei valori, inclusione, dell'ambiente e della sostenibilità)" },
+    { peso: 2, desc: "È in grado di mantenere la calma e la lucidità sotto forte stress fisico/emotivo e di infonderla negli altri" },
+    { peso: 2, desc: "Gestisce consapevolmente le proprie risorse psicofisiche, ed è conseguentemente proattivo e disponibile verso istruttori, allievi e staff" },
+  ]},
+  { macro: '6. Capacità organizzative e aspetti logistici', items: [
+    { peso: 2, desc: "È in grado di gestire e coordinare attività a mare (comandata mezzi, veleria, scalo e caletta) e a terra (comandata cucina, orari, pulizie – sala pranzo, bagni)" },
+    { peso: 1, desc: "È in grado di gestire e indirizzare le procedure per la manutenzione ordinaria, piccole avarie con i riferimenti Staff" },
+    { peso: 1, desc: "Conosce, promuove e segue le procedure di prevenzione (incendi e infortuni) ed emergenza (incendio e infortuni) a terra e a mare" },
+  ]},
+];
+
+// ── ISTRUTTORI OPERATIVO SCHEMA ──
+const IS_OP_SCHEMA = [
+  { macro: '1. Navigazione a vela', items: [
+    'Scuffia e raddrizzamento', 'Partenza e arrivo gavitello', 'Partenza e arrivo spiaggia',
+    'Ormeggio e tonneggio', 'Ancoraggio (ancoraggio ganciato)', 'QUICK-Stop', 'MOB',
+    'Adeguamento velatura, terzaroli, solo Fiocco/randa', 'Accosti',
+    'Gestione assetti, propulsione e direzione', 'Navigazione in flottiglia', 'Rimorchio a vela',
+  ]},
+  { macro: '2. Mezzi e procedure di sicurezza', items: [
+    'M0-Gozzo – Preparazione Mezzo e Ormeggio e tonneggio (con e senza trappa)',
+    'M0-Gozzo fermo prua e poppa al vento', 'M0-Gozzo presa gavitello prua/poppa',
+    'M0-Gozzo 360° (orario barra fissa)', 'M0-Gozzo – Accostare in banchina+trappa',
+    'M0-Gozzo uso cima rimorchio/capra', 'M1-Gozzo accosto barca in navigazione',
+    'M1-Gozzo accosto barca alla fonda', 'M1-Gozzo rimorchio in poppa',
+    'M1-Gozzo rimorchio in andana', 'M1-Gozzo ancoraggio',
+    'M2-Gozzo assistenza e raddr. scuf 90°', 'M2-Gozzo assistenza e raddr. scuf 180° albero piantato',
+    'M2-Gozzo assistenza barca a scogli anche sottovento', 'M2-Gozzo Recupero UAM',
+    'G1-Gommone presa gavitello prua/poppa', 'G2-Gommone accosto barca in navigazione / fonda',
+    'G3-Gommone Recupero UAM', 'G4-Traino barca in andana',
+  ]},
+  { macro: '3. Didattica alla lavagna e in mare', items: [
+    'Individuare e organizzare sulla lavagna i punti chiave della lezione',
+    'Corretto uso dello spazio della lavagna (titolo, parole chiave, area lavoro, colori, grandezza carattere)',
+    'Chiarezza vocale dell\'esposizione alla lavagna', 'Chiarezza grafica dell\'esposizione alla lavagna',
+    'Feed back – Capacità di mantenere attiva l\'attenzione (modulazione voce, ripetizione concetto...)',
+    'Conseguente all\'esercizio è in grado di posizionare boe per eseguirlo',
+    'Gestione della didattica a bordo derive/cabinato e debrief dopo la manovra',
+  ]},
+  { macro: '4. Capacità gestionale e lavoro in team (istruttore di giornata)', items: [
+    'È coerente, rappresenta un modello da seguire',
+    'Disinnescare momenti di confronto non necessari',
+    "Favorisce l'inclusione e la creazione dell'equipaggio",
+  ]},
+  { macro: '5. Consapevolezza del ruolo – Motivazione Impegno e Disponibilità', items: [
+    'Ha sempre dotazioni sicurezza e l\'abbigliamento adeguato',
+    'Si comporta in modo da prendere sempre a riferimento',
+    'Comprende il suo livello energetico, è in grado di gestire le proprie risorse',
+    'Riconosce quando è in difficoltà o non sa', 'Mostra un atteggiamento proattivo',
+  ]},
+  { macro: '6. Capacità organizzative e aspetti logistici (istruttore di giornata)', items: [
+    'Gestisce la comandata a terra', 'Gestisce lo scalo/veleria/caletta',
+    'Gestisce e coordina ormeggio, sgot, rab mezzi sic',
+    'È in grado di comunicare con staff per gestire avarie straordinarie',
+    'Conosce procedure di prevenzione e gestione emergenze sanitarie',
+    'Conosce le procedure antincendio e la conoscenza dei punti di raccolta',
+    'È consapevole degli interruttori di servizio principali delle basi',
+    'Conosce le procedure della cucina',
+  ]},
+];
+
+// ── ISTRUTTORI C3 SCHEMA ──
+const C3_SCHEMA = [
+  { macro: '1. Navigazione a vela', items: [
+    { peso: 2, desc: "È in grado di condurre con buona sicurezza e autonomia un cabinato e il suo equipaggio anche in condizioni di spazi ristretti. (T) È in grado di prevedere, valutare la navigazione costiera in sicurezza, rispettando i perimetri di navigazione (SN), e mettere in pratica le nuove nozioni acquisite durante il corso." },
+    { peso: 3, desc: "È in grado di eseguire/far eseguire costantemente tutte le manovre fondamentali del nuovo corso (tra cui tonneggio, gavitello-gancio, ancoraggio, quickstop), con regolazioni e velatura adeguata, con una buona visione a 360°, garantendo la totale sicurezza dell'imbarcazione e dell'equipaggio." },
+    { peso: 3, desc: "È in grado di eseguire tutte le manovre fondamentali, in ogni condizione, con metodo e cognizione di causa, avendo sempre in chiaro via di fuga e obiettivo esercizio (SN+VI)" },
+  ]},
+  { macro: '2. Procedure di sicurezza', items: [
+    { peso: 2, desc: "Ha consapevolezza dell'importanza della presa in consegna dell'imbarcazione, esegue le verifiche di sicurezza della barca e delle dotazioni e delle eventuali comunicazioni d'emergenza" },
+    { peso: 3, desc: "Ha una visione in termini di spazio, tempo ed energie dell'equipaggio per eseguire rientri e ancoraggi in sicurezza, considerando le eventuali situazioni di pericolo, comprendendo l'eventuale equipaggiamento e vestiario necessario sia per lui che per gli allievi." },
+    { peso: 3, desc: "È in grado di mantenere il controllo del mezzo ad equipaggio ridotto senza diventare pericoloso per sé e per l'equipaggio" },
+  ]},
+  { macro: '3. Didattica alla lavagna e in mare', items: [
+    { peso: 3, desc: "È in grado di organizzare i contenuti di un argomento del corso, avendone sufficiente conoscenza per individuarne i punti chiave ed eseguire una lezione nel tempo previsto di 25 min. Gestendo anche le domande difficili." },
+    { peso: 2, desc: "È in grado di eseguire lezioni a bordo con sufficiente efficacia (chiarezza espositiva): gestendo lo spazio a disposizione con parole e/o disegni; spiegare una manovra, lasciarla eseguire prevenendo eventuali situazioni di pericolo, effettuare un debriefing a fine manovra – "lasciare sbagliare" garantendo la sicurezza." },
+    { peso: 2, desc: "È in grado di valutare se l'obiettivo didattico è stato raggiunto ed esegue eventuali debriefing a bordo con una comunicazione positiva e nel caso eseguire la manovra come modello da fornire agli allievi per chiarimento." },
+  ]},
+  { macro: '4. Capacità gestionale e lavoro in team – Organizzazione e Comunicazione', items: [
+    { peso: 2, desc: "Recepisce le nuove informazioni acquisite, comprendendo le basi su cui si poggiano e riesce a lasciar andare vecchie abitudini o preconcetti acquisiti nel suo background velico e non in linea con quelli del CVC." },
+    { peso: 2, desc: "È in grado di organizzare, gestire e comunicare il programma della giornata previsto e di coordinarsi con il CT (via VHF) e le altre imbarcazioni, rimanendo in una navigazione di flotta, considerando la sicurezza, il meteo di base, la gestione dei tempi di uscita e rientro, le dinamiche agli arrivi e alle partenze." },
+    { peso: 1, desc: "Riesce a lavorare in gruppo evitando assoli" },
+  ]},
+  { macro: '5. Consapevolezza del ruolo – Responsabilità, Motivazione Impegno e Disponibilità', items: [
+    { peso: 2, desc: "È modello di riferimento (atteggiamento e abbigliamento) e riesce a prevedere le mancanze degli allievi in termini dell'affrontare la giornata (vestiario, attrezzature...). Dimostrando di comprendere le responsabilità annesse al ruolo, condividendo e promuovendo le norme di comportamento in rispetto delle persone (carta dei valori, inclusione, dell'ambiente e della sostenibilità)." },
+    { peso: 2, desc: "È in grado di mantenere la calma e la lucidità sotto forte stress fisico/emotivo e di infonderla negli altri." },
+    { peso: 2, desc: "È promotore delle cose da fare come un leader piuttosto che come una persona al comando." },
+  ]},
+  { macro: '6. Capacità organizzative e aspetti logistici', items: [
+    { peso: 2, desc: "È in grado di gestire la comandata a bordo e coordinarsi con le altre imbarcazioni della flotta, tenendo conto dell'impatto ambientale delle nostre attività sia a terra che in mare." },
+    { peso: 1, desc: "È in grado di gestire ed eseguire piccole avarie (circuito trinca e 3D) e di risolverle a bordo con i riferimenti dello Staff e comunica in modo efficace le eventuali avarie giornaliere non risolvibili a bordo." },
+    { peso: 1, desc: "Conosce, promuove e segue le procedure di presa in carico della barca, il suo monitoraggio e la riconsegna coordinandosi con lo Staff di terra." },
+  ]},
+];
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let state = {
+  adv: { students: [], current: null },
+  'adv-op': { students: [], current: null },
+  is: { students: [], current: null },
+  'is-op': { students: [], current: null },
+  c3: { students: [], current: null },
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('cvc-istruttori-v2');
+    if (saved) state = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('cvc-istruttori-v2', JSON.stringify(state));
+    const banner = document.getElementById('save-banner');
+    banner.style.display = 'flex';
+    clearTimeout(banner._t);
+    banner._t = setTimeout(() => banner.style.display = 'none', 2000);
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ══════════════════════════════════════════════════════════════
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+  renderSection(id);
+}
+
+// ══════════════════════════════════════════════════════════════
+// STUDENT MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+function addStudent(section) {
+  const inp = document.getElementById(section + '-new-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  const id = 'stu_' + Date.now();
+  state[section].students.push({ id, name, photo: null, note: '', grades: {}, opGrades: {} });
+  if (!state[section].current) state[section].current = id;
+  inp.value = '';
+  saveState();
+  renderSection(section);
+}
+
+function deleteStudent(section, id) {
+  if (!confirm('Eliminare questo allievo?')) return;
+  state[section].students = state[section].students.filter(s => s.id !== id);
+  if (state[section].current === id) {
+    state[section].current = state[section].students.length ? state[section].students[0].id : null;
+  }
+  saveState();
+  renderSection(section);
+}
+
+function selectStudent(section, id) {
+  state[section].current = id;
+  renderSection(section);
+}
+
+function getStudent(section) {
+  return state[section].students.find(s => s.id === state[section].current) || null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// PHOTO UPLOAD
+// ══════════════════════════════════════════════════════════════
+function handlePhoto(section, fileInput) {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const stu = getStudent(section);
+    if (!stu) return;
+    stu.photo = e.target.result;
+    saveState();
+    renderSection(section);
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════════════════════════════
+// GRADE MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+function setGrade(section, key, value) {
+  const stu = getStudent(section);
+  if (!stu) return;
+  stu.grades[key] = value;
+  saveState();
+  updateEvalDisplay(section);
+}
+
+function setOpGrade(section, key, value) {
+  const stu = getStudent(section);
+  if (!stu) return;
+  stu.opGrades[key] = value;
+  saveState();
+  updateOpDisplay(section);
+}
+
+function setNote(section, value) {
+  const stu = getStudent(section);
+  if (!stu) return;
+  stu.note = value;
+  saveState();
+}
+
+// ══════════════════════════════════════════════════════════════
+// SCORING
+// ══════════════════════════════════════════════════════════════
+function calcSectionScore(schema, macroIdx, grades) {
+  const sec = schema[macroIdx];
+  let total = 0, max = 0;
+  sec.items.forEach((item, i) => {
+    const key = macroIdx + '_' + i;
+    const voto = grades[key] || '';
+    const peso = item.peso || 1;
+    total += (PESI[voto] || 0) * peso;
+    max += 4 * peso; // ottimo = 4
+  });
+  return { total, max };
+}
+
+function getSemaforo(total, max) {
+  if (max === 0) return 'vuoto';
+  const pct = total / max;
+  if (pct <= 0) return 'rosso'; // all non-raggiunto
+  if (pct < 0.5) return 'rosso';
+  if (pct < 0.75) return 'giallo';
+  return 'verde';
+}
+
+function calcTotal(schema, grades) {
+  let t = 0;
+  schema.forEach((sec, mi) => {
+    sec.items.forEach((item, i) => {
+      const key = mi + '_' + i;
+      const voto = grades[key] || '';
+      const peso = item.peso || 1;
+      t += (PESI[voto] || 0) * peso;
+    });
+  });
+  return t;
+}
+
+function semaforoLabel(s) {
+  if (s === 'verde') return '<span class="semaforo-badge sem-verde">🟢 Verde</span>';
+  if (s === 'giallo') return '<span class="semaforo-badge sem-giallo">🟡 Giallo</span>';
+  if (s === 'rosso') return '<span class="semaforo-badge sem-rosso">🔴 Rosso</span>';
+  return '<span class="semaforo-badge sem-vuoto">⚪ –</span>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER SECTION
+// ══════════════════════════════════════════════════════════════
+function renderSection(section) {
+  const sc = state[section];
+  const studentsEl = document.getElementById(section + '-students');
+  const contentEl = document.getElementById(section + '-content');
+
+  // Student tabs
+  studentsEl.innerHTML = sc.students.map(s => `
+    <div class="student-tab ${s.id === sc.current ? 'active' : ''}" onclick="selectStudent('${section}','${s.id}')">
+      ${s.photo ? `<img src="${s.photo}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">` : ''}
+      ${escHtml(s.name)}
+      <button class="del-btn" onclick="event.stopPropagation();deleteStudent('${section}','${s.id}')" title="Elimina">✕</button>
+    </div>
+  `).join('');
+
+  if (!sc.current || !sc.students.length) {
+    contentEl.innerHTML = `<div class="empty-state"><div class="icon">👤</div><p>Aggiungi un allievo per iniziare la valutazione</p></div>`;
+    return;
+  }
+
+  const stu = getStudent(section);
+  if (!stu) return;
+
+  if (section === 'adv' || section === 'is' || section === 'c3') {
+    renderEvalForm(section, stu, contentEl);
+  } else {
+    renderOpForm(section, stu, contentEl);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER EVAL FORM (ADV, IS, C3)
+// ══════════════════════════════════════════════════════════════
+function renderEvalForm(section, stu, contentEl) {
+  const schema = section === 'adv' ? ADV_SCHEMA : section === 'is' ? IS_SCHEMA : C3_SCHEMA;
+  const threshold = section === 'adv' ? null : 66;
+
+  const photoHtml = `
+    <div class="photo-section">
+      <div class="photo-preview">
+        ${stu.photo ? `<img src="${stu.photo}" alt="foto">` : '👤'}
+      </div>
+      <div class="photo-actions">
+        <label for="photo-${section}-${stu.id}">📷 Carica foto
+          <input type="file" id="photo-${section}-${stu.id}" accept="image/*" onchange="handlePhoto('${section}',this)">
+        </label>
+        ${stu.photo ? `<button class="btn btn-danger btn-sm" onclick="removePhoto('${section}')">🗑 Rimuovi</button>` : ''}
+      </div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:1rem;color:var(--gray-800);">${escHtml(stu.name)}</div>
+        <div style="font-size:0.8rem;color:var(--gray-600);">Allievo ${section.toUpperCase()}</div>
+      </div>
+    </div>`;
+
+  const noteHtml = `
+    <div class="note-section">
+      <label>📝 Blocco Note – ${escHtml(stu.name)}</label>
+      <textarea placeholder="Annotazioni, osservazioni, punti di forza e di debolezza..." 
+        onchange="setNote('${section}',this.value)">${escHtml(stu.note || '')}</textarea>
+    </div>`;
+
+  // Build table
+  let rows = '';
+  schema.forEach((sec, mi) => {
+    rows += `<tr class="macro-row"><td colspan="3"><strong>${sec.macro}</strong></td></tr>`;
+    sec.items.forEach((item, i) => {
+      const key = `${mi}_${i}`;
+      const val = stu.grades[key] || '';
+      const vClass = VOTO_CLASS[val] || '';
+      rows += `
+        <tr>
+          <td class="criteria-text">${item.desc}</td>
+          <td style="text-align:center;white-space:nowrap;"><span class="peso-badge">Peso ${item.peso}</span></td>
+          <td>
+            <select class="voto-select ${vClass}" id="sel-${section}-${key}"
+              onchange="setGrade('${section}','${key}',this.value)">
+              ${VOTI.map(v => `<option value="${v}" ${v===val?'selected':''}>${v||'— scegli —'}</option>`).join('')}
+            </select>
+          </td>
+        </tr>`;
+    });
+    // Semaforo row
+    const { total, max } = calcSectionScore(schema, mi, stu.grades);
+    const sem = getSemaforo(total, max);
+    rows += `
+      <tr class="semaforo-row">
+        <td colspan="2">🚦 Semaforo – <em>${sec.macro}</em></td>
+        <td id="sem-${section}-${mi}">${semaforoLabel(sem)}</td>
+      </tr>`;
+  });
+
+  // Total
+  const tot = calcTotal(schema, stu.grades);
+  const pass = threshold ? tot >= threshold : null;
+  rows += `
+    <tr class="total-row">
+      <td colspan="2">Totale complessivo valutazione allievo</td>
+      <td>
+        <div class="score-box ${pass===true?'pass':pass===false?'fail':''}" id="score-${section}">
+          <span class="val">${tot}</span>
+          <span class="lbl">${threshold ? (pass ? '✅ Promosso' : '❌ Non Promosso') : 'punti'}</span>
+        </div>
+      </td>
+    </tr>`;
+
+  // Not promoted warning
+  const warnHtml = (section === 'is' || section === 'c3') ? `
+    <div class="not-promoted-warning" id="warn-${section}">
+      ⚠️ ALLIEVO NON PROMOSSO – le voci 1 e 2 sono entrambe insufficienti
+    </div>` : '';
+
+  contentEl.innerHTML = photoHtml + noteHtml + warnHtml + `
+    <div class="eval-section">
+      <table class="eval-table">
+        <thead><tr>
+          <th>Criterio di Valutazione</th>
+          <th class="center" style="width:90px">Peso</th>
+          <th style="width:160px">Valutazione</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  checkNotPromoted(section, schema, stu.grades);
+}
+
+function checkNotPromoted(section, schema, grades) {
+  const warn = document.getElementById('warn-' + section);
+  if (!warn) return;
+  const sec1 = calcSectionScore(schema, 0, grades);
+  const sec2 = calcSectionScore(schema, 1, grades);
+  const s1 = getSemaforo(sec1.total, sec1.max);
+  const s2 = getSemaforo(sec2.total, sec2.max);
+  const bad = (s === 'rosso' || s === 'giallo');
+  if ((s1==='rosso'||s1==='giallo') && (s2==='rosso'||s2==='giallo')) {
+    warn.classList.add('show');
+  } else {
+    warn.classList.remove('show');
+  }
+}
+
+function removePhoto(section) {
+  const stu = getStudent(section);
+  if (!stu) return;
+  stu.photo = null;
+  saveState();
+  renderSection(section);
+}
+
+function updateEvalDisplay(section) {
+  const stu = getStudent(section);
+  if (!stu) return;
+  const schema = section === 'adv' ? ADV_SCHEMA : section === 'is' ? IS_SCHEMA : C3_SCHEMA;
+  const threshold = section === 'adv' ? null : 66;
+
+  // Update select colors
+  schema.forEach((sec, mi) => {
+    sec.items.forEach((item, i) => {
+      const key = `${mi}_${i}`;
+      const sel = document.getElementById(`sel-${section}-${key}`);
+      if (sel) {
+        const val = sel.value;
+        sel.className = 'voto-select ' + (VOTO_CLASS[val] || '');
+      }
+    });
+    // Update semaforo
+    const { total, max } = calcSectionScore(schema, mi, stu.grades);
+    const sem = getSemaforo(total, max);
+    const semEl = document.getElementById(`sem-${section}-${mi}`);
+    if (semEl) semEl.innerHTML = semaforoLabel(sem);
+  });
+
+  // Update total
+  const tot = calcTotal(schema, stu.grades);
+  const pass = threshold ? tot >= threshold : null;
+  const scoreEl = document.getElementById(`score-${section}`);
+  if (scoreEl) {
+    scoreEl.querySelector('.val').textContent = tot;
+    scoreEl.querySelector('.lbl').textContent = threshold ? (pass ? '✅ Promosso' : '❌ Non Promosso') : 'punti';
+    scoreEl.className = 'score-box ' + (pass===true?'pass':pass===false?'fail':'');
+  }
+
+  checkNotPromoted(section, schema, stu.grades);
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER OP FORM (ADV-OP, IS-OP)
+// ══════════════════════════════════════════════════════════════
+function renderOpForm(section, stu, contentEl) {
+  const schema = section === 'adv-op' ? ADV_OP_SCHEMA : IS_OP_SCHEMA;
+  const baseSection = section === 'adv-op' ? 'adv' : 'is';
+
+  const photoHtml = `
+    <div class="photo-section">
+      <div class="photo-preview">
+        ${stu.photo ? `<img src="${stu.photo}" alt="foto">` : '👤'}
+      </div>
+      <div class="photo-actions">
+        <label for="photo-${section}-${stu.id}">📷 Carica foto
+          <input type="file" id="photo-${section}-${stu.id}" accept="image/*" onchange="handlePhoto('${section}',this)">
+        </label>
+        ${stu.photo ? `<button class="btn btn-danger btn-sm" onclick="removePhoto('${section}')">🗑 Rimuovi</button>` : ''}
+      </div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:1rem;color:var(--gray-800);">${escHtml(stu.name)}</div>
+        <div style="font-size:0.8rem;color:var(--gray-600);">Valutazione Operativa</div>
+      </div>
+    </div>`;
+
+  const noteHtml = `
+    <div class="note-section">
+      <label>📝 Blocco Note – ${escHtml(stu.name)}</label>
+      <textarea placeholder="Annotazioni, osservazioni, punti di forza e di debolezza..." 
+        onchange="setNote('${section}',this.value)">${escHtml(stu.note || '')}</textarea>
+    </div>`;
+
+  let rows = '';
+  schema.forEach((sec, mi) => {
+    rows += `<tr class="op-macro"><td colspan="2"><strong>${sec.macro}</strong></td></tr>`;
+    sec.items.forEach((item, i) => {
+      const key = `${mi}_${i}`;
+      const val = stu.opGrades[key] || '';
+      const vClass = VOTO_CLASS[val] || '';
+      rows += `
+        <tr>
+          <td>${typeof item === 'string' ? item : item.desc}</td>
+          <td style="width:160px">
+            <select class="voto-select ${vClass}" id="opsel-${section}-${key}"
+              onchange="setOpGrade('${section}','${key}',this.value)">
+              ${VOTI.map(v => `<option value="${v}" ${v===val?'selected':''}>${v||'— scegli —'}</option>`).join('')}
+            </select>
+          </td>
+        </tr>`;
+    });
+  });
+
+  contentEl.innerHTML = photoHtml + noteHtml + `
+    <div class="eval-section">
+      <table class="op-table">
+        <thead><tr>
+          <th>Obiettivo Operativo</th>
+          <th style="width:160px">Valutazione</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function updateOpDisplay(section) {
+  const stu = getStudent(section);
+  if (!stu) return;
+  const schema = section === 'adv-op' ? ADV_OP_SCHEMA : IS_OP_SCHEMA;
+  schema.forEach((sec, mi) => {
+    sec.items.forEach((item, i) => {
+      const key = `${mi}_${i}`;
+      const sel = document.getElementById(`opsel-${section}-${key}`);
+      if (sel) sel.className = 'voto-select ' + (VOTO_CLASS[sel.value] || '');
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// EXPORT CSV
+// ══════════════════════════════════════════════════════════════
+function exportCSV(section) {
+  const sc = state[section];
+  if (!sc.students.length) { alert('Nessun allievo da esportare'); return; }
+  const schema = section === 'adv' ? ADV_SCHEMA : section === 'is' ? IS_SCHEMA : section === 'c3' ? C3_SCHEMA : section === 'adv-op' ? ADV_OP_SCHEMA : IS_OP_SCHEMA;
+  const isOp = section.includes('-op');
+
+  let csv = 'Allievo,Sezione,Criterio,Voto\n';
+  sc.students.forEach(stu => {
+    schema.forEach((sec, mi) => {
+      sec.items.forEach((item, i) => {
+        const key = `${mi}_${i}`;
+        const desc = typeof item === 'string' ? item : item.desc;
+        const voto = isOp ? (stu.opGrades[key]||'') : (stu.grades[key]||'');
+        csv += `"${stu.name}","${sec.macro}","${desc.replace(/"/g,'""')}","${voto}"\n`;
+      });
+    });
+  });
+
+  const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `valutazione_${section}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════════
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+loadState();
+renderSection('adv');
+</script>
+</body>
+</html>
