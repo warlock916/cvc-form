@@ -757,46 +757,33 @@ function importaExcel(input){
       var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       if(!rows||rows.length<2){alert('Nessun dato trovato nel file.');input.value='';return;}
 
-      // Strategia di ricerca nomi — gestisce il formato CVC (titolo riga 0, intestazioni riga 1)
-      // 1. Cerca riga con intestazione "Nominativo" o "Allievo" o "Nome"
-      // 2. Se non la trova, usa la prima colonna con valori non numerici
-      var headerRow=-1, nameCol=-1;
+      // Cerca colonna Nominativo / Allievo / Nome
+      var headerRow=-1,nameCol=-1;
       var keywords=['nominativo','allievo','nome','cognome','studente'];
       for(var ri=0;ri<Math.min(rows.length,5);ri++){
         for(var ci=0;ci<rows[ri].length;ci++){
           var cell=String(rows[ri][ci]||'').trim().toLowerCase();
-          if(keywords.some(function(k){return cell.indexOf(k)>=0;})){
-            headerRow=ri; nameCol=ci; break;
-          }
+          if(keywords.some(function(k){return cell.indexOf(k)>=0;})){headerRow=ri;nameCol=ci;break;}
         }
         if(headerRow>=0)break;
       }
-
-      // Se non trovata intestazione, usa colonna 0 e salta la prima riga (titolo)
       if(headerRow<0){headerRow=0;nameCol=0;}
 
-      var nomi=[];
+      var aggiunti=0,saltati=0;
+      var promises=[];
       for(var i=headerRow+1;i<rows.length;i++){
         var v=String(rows[i][nameCol]||'').trim();
-        // Salta vuoti, numeri puri, celle che sembrano intestazioni
         if(!v||/^\d+$/.test(v))continue;
-        // Salta se uguale a una keyword (es. "Nominativo" ripetuta)
         if(keywords.some(function(k){return v.toLowerCase()===k;}))continue;
-        nomi.push(v);
+        // Prende solo l'ultima parola = il nome
+        var nome=v.split(/\s+/).pop();
+        if(!nome)continue;
+        if(allievi.find(function(a){return a.nome===nome;})){saltati++;continue;}
+        aggiunti++;
+        promises.push(aggiungiAllievoSilenzioso(nome));
       }
 
-      if(!nomi.length){alert('Nessun nome trovato nel file.\nAssicurati che i nomi siano nella colonna "Nominativo" o nella prima colonna.');input.value='';return;}
-
-      // Anteprima: mostra quanti nomi trovati e chiede conferma
-      var preview=nomi.slice(0,5).join(', ')+(nomi.length>5?' ... e altri '+(nomi.length-5):'');
-      if(!confirm('Trovati '+nomi.length+' allievi:\n'+preview+'\n\nImportare?')){input.value='';return;}
-
-      var aggiunti=0,saltati=0;
-      var promises=nomi.map(function(nome){
-        if(allievi.find(function(a){return a.nome===nome;})){saltati++;return Promise.resolve();}
-        aggiunti++;
-        return aggiungiAllievoSilenzioso(nome);
-      });
+      if(!promises.length&&!saltati){alert('Nessun nome trovato nel file.');input.value='';return;}
 
       Promise.all(promises).then(function(){
         renderAllievi();
