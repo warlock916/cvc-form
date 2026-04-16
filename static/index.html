@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CVC - Valutazione Formazione Istruttori</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--blu:#1F4E79;--blu2:#2E75B6;--azzurro:#BDD7EE;--oro:#FFD700;--verde:#70AD47;--rosso:#C00000;--arancio:#E6A817;--teal:#0d9488;--teal2:#ccfbf1;--grigio:#F2F2F2;--bordo:#CCCCCC;--testo:#1a1a1a;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -129,11 +130,31 @@ table.riepilogo td{padding:6px 9px;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .save-toast{position:fixed;bottom:18px;right:18px;background:var(--verde);color:white;padding:10px 18px;border-radius:10px;font-size:.85rem;font-weight:bold;box-shadow:0 4px 14px rgba(0,0,0,.2);display:none;z-index:200;align-items:center;gap:8px;}
 .save-toast.show{display:flex;}
+/* Resoconto */
+.res-table{width:100%;border-collapse:collapse;font-size:.84rem;}
+.res-table th{background:var(--blu);color:white;padding:10px 12px;text-align:left;font-weight:600;}
+.res-table th.center{text-align:center;}
+.res-table td{padding:9px 12px;border-bottom:1px solid #eee;vertical-align:middle;}
+.res-table tr:hover td{background:#f0f6ff;}
+.res-rank{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-weight:800;font-size:.85rem;background:var(--grigio);color:#555;}
+.res-rank.r1{background:#FFD700;color:#7a4f00;}
+.res-rank.r2{background:#C0C0C0;color:#444;}
+.res-rank.r3{background:#cd7f32;color:#fff;}
+.res-score{display:inline-block;min-width:42px;text-align:center;padding:4px 10px;border-radius:20px;font-weight:800;font-size:.95rem;}
+.res-score.pass{background:#dcfce7;color:#15803d;}
+.res-score.fail{background:#fee2e2;color:#b91c1c;}
+.res-score.neutral{background:#fef9c3;color:#713f12;}
+.res-foto{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--azzurro);}
+.res-foto-ph{width:38px;height:38px;border-radius:50%;background:var(--grigio);display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;border:2px solid var(--bordo);}
+.res-sem-row{display:flex;gap:4px;flex-wrap:wrap;}
+.res-sem{display:inline-block;width:10px;height:10px;border-radius:50%;}
+.res-sem.v{background:#16a34a;}.res-sem.g{background:#d97706;}.res-sem.r{background:#b91c1c;}
 @media(max-width:500px){.home-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="uploadFoto(this)">
+<input type="file" id="excel-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="importaExcel(this)">
 <header>
   <h1>&#9973; CVC - Valutazione Formazione Istruttori</h1>
   <div class="hdr-info" id="hdr-info"></div>
@@ -142,6 +163,7 @@ table.riepilogo td{padding:6px 9px;}
   <button id="nav-home" onclick="showPage('home',this)">&#127968; Home</button>
   <button id="nav-scheda" onclick="showPage('scheda',this)">&#128203; Valutazione</button>
   <button id="nav-op" onclick="showPage('operativo',this)">&#128676; Operativo</button>
+  <button id="nav-res" onclick="showPage('resoconto',this)">&#127942; Resoconto</button>
   <button id="nav-admin" onclick="showPage('admin',this)">&#128274; Admin</button>
   <button onclick="doLogout()" style="margin-left:auto;">&#8617; Esci</button>
 </nav>
@@ -187,7 +209,7 @@ table.riepilogo td{padding:6px 9px;}
   <div class="card">
     <h2>Benvenuto &mdash; <span id="home-subtitle"></span></h2>
     <p style="font-size:.86rem;color:#666;margin-bottom:20px;">Scegli la sezione su cui vuoi lavorare:</p>
-    <div class="home-grid">
+    <div class="home-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));max-width:700px;">
       <div class="home-card" onclick="showPage('scheda',document.getElementById('nav-scheda'))">
         <div class="icon">&#128203;</div>
         <div class="title">Valutazione</div>
@@ -197,6 +219,11 @@ table.riepilogo td{padding:6px 9px;}
         <div class="icon">&#128676;</div>
         <div class="title">Operativo</div>
         <div class="sub">Scheda obiettivi operativi pratici: vela, sicurezza, didattica, logistica</div>
+      </div>
+      <div class="home-card" onclick="showPage('resoconto',document.getElementById('nav-res'))">
+        <div class="icon">&#127942;</div>
+        <div class="title">Resoconto</div>
+        <div class="sub">Classifica allievi ordinata per punteggio finale con semafori sezioni</div>
       </div>
     </div>
   </div>
@@ -211,6 +238,7 @@ table.riepilogo td{padding:6px 9px;}
     <div class="add-row">
       <input type="text" id="nuovo-allievo" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')aggiungiAllievo()">
       <button class="btn btn-outline btn-sm" onclick="aggiungiAllievo()">+ Aggiungi</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('excel-input').click()">&#128229; Importa Excel</button>
       <button class="btn btn-outline btn-sm" onclick="esportaCSV('val')">CSV Valutazione</button>
     </div>
     <div id="allievo-content" style="margin-top:16px;"></div>
@@ -223,6 +251,19 @@ table.riepilogo td{padding:6px 9px;}
     <p style="font-size:.8rem;color:#888;margin-bottom:10px;">Gli allievi si aggiungono dalla scheda Valutazione.</p>
     <div class="allievi-tabs" id="allievi-tabs-op"></div>
     <div id="allievo-op-content" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<div id="page-resoconto" class="page">
+  <div class="card">
+    <h2>&#127942; <span id="res-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <p style="font-size:.82rem;color:#666;margin-bottom:14px;">Classifica allievi ordinata per punteggio totale &mdash; aggiornata in tempo reale dai dati inseriti in Valutazione.</p>
+    <div id="resoconto-content">
+      <div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#127942;</div><p>Aggiungi allievi e inserisci valutazioni per vedere il resoconto.</p></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline btn-sm" onclick="esportaCSVResoconto()">&#128229; Esporta Resoconto CSV</button>
+    </div>
   </div>
 </div>
 
@@ -489,6 +530,7 @@ async function enterApp(){
   document.getElementById('home-subtitle').textContent='Turno '+session.turno+' - '+session.capoturno+' - '+label;
   document.getElementById('scheda-subtitle').textContent='Valutazione - Turno '+session.turno+' - '+label;
   document.getElementById('op-subtitle').textContent='Operativo - Turno '+session.turno+' - '+label;
+  document.getElementById('res-subtitle').textContent='Resoconto - Turno '+session.turno+' - '+label;
   showPage('home');
   await caricaAllievi();
 }
@@ -698,9 +740,153 @@ function showPage(name,btn){
   document.getElementById('page-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
   if(name==='operativo')renderAllievoOp();
+  if(name==='resoconto')renderResoconto();
   if(name==='admin')showAdminSection();
   // Pulisce il campo password admin quando si cambia pagina, evita il popup "aggiorna password"
   if(name!=='admin'){var ap=document.getElementById('admin-pwd');if(ap&&!adminToken)ap.value='';}
+}
+
+// ── Importa Excel ─────────────────────────────────────────────────────────────
+function importaExcel(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(rows.length<2){alert('Nessun allievo trovato nel file.');return;}
+      var header=rows[0].map(function(c){return String(c).trim().toLowerCase();});
+      var colIdx=header.indexOf('allievo');
+      if(colIdx===-1){
+        // Se non trova "allievo", prova prima colonna non vuota
+        colIdx=0;
+        alert('Colonna "Allievo" non trovata — uso la prima colonna.');
+      }
+      var aggiunti=0,saltati=0,vuoti=0;
+      var promises=[];
+      for(var i=1;i<rows.length;i++){
+        var nome=String(rows[i][colIdx]||'').trim();
+        if(!nome){vuoti++;continue;}
+        if(allievi.find(function(a){return a.nome===nome;})){saltati++;continue;}
+        promises.push(aggiungiAllievoSilenzioso(nome));
+        aggiunti++;
+      }
+      Promise.all(promises).then(function(){
+        renderAllievi();
+        var msg='Importati '+aggiunti+' allievi';
+        if(saltati>0)msg+='\n'+saltati+' gia presenti (saltati)';
+        if(vuoti>0)msg+='\n'+vuoti+' righe vuote ignorate';
+        alert(msg);
+      });
+    }catch(err){alert('Errore lettura file: '+err.message);}
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function aggiungiAllievoSilenzioso(nome){
+  if(allievi.find(function(a){return a.nome===nome;}))return;
+  try{
+    var res=await fetchAuth(API+'/api/allievi/'+session.turno,{
+      method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
+      body:JSON.stringify({corso:session.corso,nome:nome})
+    });
+    if(!res)return;
+    var d=await res.json();
+    if(res.ok){
+      allievi.push({id:d.id,nome:nome,foto_url:null,note:'',grades:{},op_grades:{}});
+      if(!currentAllievo)currentAllievo=d.id;
+      if(!currentAllievoOp)currentAllievoOp=d.id;
+    }
+  }catch{}
+}
+
+// ── Resoconto ─────────────────────────────────────────────────────────────────
+function renderResoconto(){
+  var el=document.getElementById('resoconto-content');
+  if(!allievi.length){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#127942;</div><p>Aggiungi allievi e inserisci valutazioni per vedere il resoconto.</p></div>';
+    return;
+  }
+  var schema=SCHEMAS[session.corso]||[];
+  var soglia=SOGLIE[session.corso];
+
+  // Calcola punteggio e semafori per ogni allievo
+  var dati=allievi.map(function(a){
+    var tot=calcTotal(schema,a.grades||{});
+    var sems=schema.map(function(_,si){
+      var media=calcSectionMedia(schema,si,a.grades||{});
+      return getSem(media);
+    });
+    return{a:a,tot:tot,sems:sems};
+  });
+
+  // Ordina per punteggio decrescente
+  dati.sort(function(x,y){return y.tot-x.tot;});
+
+  // Calcola max teorico per barra progresso
+  var maxTot=schema.reduce(function(s,sec){return s+sec.items.reduce(function(ss,it){return ss+it.peso*4;},0);},0);
+
+  var thead='<thead><tr><th class="center" style="width:40px">#</th><th style="width:46px"></th><th>Allievo</th><th class="center">Punteggio</th>';
+  if(soglia)thead+='<th class="center">Esito</th>';
+  thead+='<th>Semafori Sezioni</th><th>Note</th></tr></thead>';
+
+  var tbody=dati.map(function(d,idx){
+    var a=d.a;var tot=d.tot;var sems=d.sems;
+    var rank=idx+1;
+    var rankClass=rank===1?'r1':rank===2?'r2':rank===3?'r3':'';
+    var scoreClass=soglia?(tot>=soglia?'pass':'fail'):'neutral';
+    var pct=maxTot>0?Math.round(tot/maxTot*100):0;
+    var esito='';
+    if(soglia)esito='<td style="text-align:center">'+(tot>=soglia?'<span style="color:var(--verde);font-weight:bold;font-size:.82rem;">&#10003; Promosso</span>':'<span style="color:var(--rosso);font-weight:bold;font-size:.82rem;">&#10007; Non Promosso</span>')+'</td>';
+    var semHtml='<div class="res-sem-row">'+sems.map(function(s,si){return'<span title="'+schema[si].macro+'" class="res-sem '+s+'"></span>';}).join('')+'</div>';
+    var fotoHtml=a.foto_url?'<img class="res-foto" src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'<span class="res-foto-ph">&#128100;</span>';
+    var noteHtml=a.note?'<span style="font-size:.75rem;color:#666;font-style:italic;">'+escH(a.note.substring(0,60))+(a.note.length>60?'...':'')+'</span>':'-';
+    // Barra progresso
+    var barColor=scoreClass==='pass'?'var(--verde)':scoreClass==='fail'?'var(--rosso)':'var(--arancio)';
+    return'<tr>'
+      +'<td style="text-align:center"><span class="res-rank '+rankClass+'">'+rank+'</span></td>'
+      +'<td>'+fotoHtml+'</td>'
+      +'<td><strong>'+escH(a.nome)+'</strong><div style="margin-top:4px;background:#eee;border-radius:4px;height:5px;width:100px;"><div style="background:'+barColor+';height:5px;border-radius:4px;width:'+pct+'%;"></div></div></td>'
+      +'<td style="text-align:center"><span class="res-score '+scoreClass+'">'+tot+'</span><div style="font-size:.68rem;color:#888;margin-top:2px;">/ '+maxTot+'</div></td>'
+      +esito
+      +'<td>'+semHtml+'</td>'
+      +'<td style="max-width:180px;">'+noteHtml+'</td>'
+      +'</tr>';
+  }).join('');
+
+  // Legenda semafori sezioni
+  var legenda='<div style="margin-top:14px;padding:10px 14px;background:var(--grigio);border-radius:8px;font-size:.76rem;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">'
+    +'<span style="font-weight:bold;color:var(--blu);">Semafori sezioni:</span>'
+    +schema.map(function(sec,si){return'<span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block;"></span>'+(si+1)+'. '+sec.macro.split('.')[1].trim().split('-')[0].trim().split('–')[0].trim()+'</span>';}).join('')
+    +'</div>';
+
+  el.innerHTML='<div style="overflow-x:auto;"><table class="res-table">'+thead+'<tbody>'+tbody+'</tbody></table></div>'+legenda;
+}
+
+function esportaCSVResoconto(){
+  if(!allievi.length){alert('Nessun allievo da esportare.');return;}
+  var schema=SCHEMAS[session.corso]||[];
+  var soglia=SOGLIE[session.corso];
+  var dati=allievi.map(function(a){
+    return{nome:a.nome,tot:calcTotal(schema,a.grades||{}),note:a.note||''};
+  });
+  dati.sort(function(x,y){return y.tot-x.tot;});
+  var csv='\uFEFFPos,Allievo,Punteggio'+(soglia?',Esito':'')+(schema.length>0?',Semaforo_'+schema.map(function(_,i){return(i+1);}).join(',Semaforo_'):'')+',Note\n';
+  dati.forEach(function(d,idx){
+    var a=allievi.find(function(x){return x.nome===d.nome;});
+    var sems=schema.map(function(_,si){return getSem(calcSectionMedia(schema,si,a.grades||{}));});
+    var esito=soglia?(d.tot>=soglia?'Promosso':'Non Promosso'):'';
+    csv+=''+(idx+1)+',"'+d.nome+'",'+d.tot+(soglia?',"'+esito+'"':'')
+      +sems.map(function(s){return',"'+(s==='v'?'Verde':s==='g'?'Giallo':'Rosso')+'"';}).join('')
+      +',"'+d.note.replace(/"/g,'""')+'"\n';
+  });
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var link=document.createElement('a');link.href=url;
+  link.download='CVC_T'+session.turno+'_'+session.corso+'_resoconto_'+new Date().toISOString().slice(0,10)+'.csv';
+  link.click();URL.revokeObjectURL(url);
 }
 
 async function showAdminSection(){
