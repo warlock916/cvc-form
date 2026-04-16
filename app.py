@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
-ADMIN_PWD    = os.environ.get('ADMIN_PASSWORD', 'admin123')
+ADMIN_PWD    = os.environ.get('ADMIN_PASSWORD', 'CVC2025!')
 FOTO_PWD     = os.environ.get('FOTO_PASSWORD', 'titta01')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
