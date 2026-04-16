@@ -13,23 +13,32 @@ DATABASE_URL = os.environ.get('DATABASE_URL', '')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-USE_PG = bool(DATABASE_URL)
+# ── Database setup ────────────────────────────────────────────────────────────
+# Supporta sia PostgreSQL (Railway) che SQLite (locale/fallback)
+# Railway fornisce DATABASE_URL come "postgresql://..." o "postgres://..."
 
-if USE_PG:
+USE_PG = False
+PH = '?'
+
+if DATABASE_URL:
     try:
-        import pg8000
-        import urllib.parse as _up
+        import psycopg2
+        import psycopg2.extras
+        # Railway usa sia "postgres://" che "postgresql://"
+        _db_url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
         def get_db():
-            r = _up.urlparse(DATABASE_URL)
-            conn = pg8000.connect(
-                host=r.hostname, port=r.port or 5432,
-                database=r.path.lstrip('/'),
-                user=r.username, password=r.password,
-                ssl_context=True
-            )
+            conn = psycopg2.connect(_db_url, sslmode='require')
             return conn
+
+        # Test connessione
+        _test = get_db()
+        _test.close()
+        USE_PG = True
         PH = '%s'
-    except ImportError:
+        print(f"[DB] PostgreSQL connesso OK")
+    except Exception as e:
+        print(f"[DB] PostgreSQL fallito ({e}), uso SQLite")
         USE_PG = False
 
 if not USE_PG:
@@ -40,6 +49,7 @@ if not USE_PG:
         conn.row_factory = sqlite3.Row
         return conn
     PH = '?'
+    print(f"[DB] SQLite: {DB}")
 
 def rows_to_dicts(rows, cursor=None):
     if not rows: return []
@@ -57,6 +67,11 @@ def row_to_dict(row, cursor=None):
 
 def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
+
+def get_field(row, idx, name):
+    """Accede a un campo di una riga in modo compatibile PG/SQLite."""
+    if row is None: return None
+    return row[idx] if USE_PG else row[name]
 
 # ── Corsi disponibili ────────────────────────────────────────────────────────
 CORSI_VALIDI = ['ADV', 'Istruttori1', 'IstruttoriC3']
@@ -427,17 +442,21 @@ def add_allievo(turno):
     with get_db() as conn:
         cur = conn.cursor()
         try:
-            cur.execute(
-                f'INSERT INTO allievi(turno,corso,nome) VALUES({PH},{PH},{PH})',
-                (turno, corso, nome)
-            )
-            conn.commit()
-            lid = cur.lastrowid if not USE_PG else None
             if USE_PG:
-                cur.execute(f'SELECT id FROM allievi WHERE turno={PH} AND corso={PH} AND nome={PH}',
-                            (turno, corso, nome))
+                cur.execute(
+                    f'INSERT INTO allievi(turno,corso,nome) VALUES({PH},{PH},{PH}) RETURNING id',
+                    (turno, corso, nome)
+                )
                 lid = cur.fetchone()[0]
+            else:
+                cur.execute(
+                    f'INSERT INTO allievi(turno,corso,nome) VALUES({PH},{PH},{PH})',
+                    (turno, corso, nome)
+                )
+                lid = cur.lastrowid
+            conn.commit()
         except Exception as e:
+            conn.rollback()
             return jsonify({'error': 'Allievo già presente o errore: ' + str(e)}), 400
 
     return jsonify({'ok': True, 'id': lid, 'nome': nome})
