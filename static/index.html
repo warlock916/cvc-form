@@ -3,19 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>CVC – Valutazione Formazione Istruttori</title>
+<title>CVC - Valutazione Formazione Istruttori</title>
 <style>
-:root{
-  --blu:#1F4E79;--blu2:#2E75B6;--azzurro:#BDD7EE;
-  --oro:#FFD700;--verde:#70AD47;--rosso:#C00000;
-  --arancio:#E6A817;--teal:#0d9488;
-  --grigio:#F2F2F2;--bordo:#CCCCCC;--testo:#1a1a1a;
-}
+:root{--blu:#1F4E79;--blu2:#2E75B6;--azzurro:#BDD7EE;--oro:#FFD700;--verde:#70AD47;--rosso:#C00000;--arancio:#E6A817;--teal:#0d9488;--teal2:#ccfbf1;--grigio:#F2F2F2;--bordo:#CCCCCC;--testo:#1a1a1a;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,sans-serif;background:#e8f0f7;color:var(--testo);min-height:100vh;}
 header{background:var(--blu);color:white;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.3);}
 header h1{font-size:1rem;}
-header .hdr-info{font-size:.78rem;opacity:.9;text-align:right;line-height:1.5;}
+.hdr-info{font-size:.78rem;opacity:.9;text-align:right;line-height:1.5;}
 nav{background:var(--blu2);display:flex;flex-wrap:wrap;}
 nav button{background:none;border:none;color:rgba(255,255,255,.75);padding:10px 16px;cursor:pointer;font-size:.85rem;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
 nav button:hover{color:white;background:rgba(255,255,255,.1);}
@@ -23,8 +18,6 @@ nav button.active{color:white;border-bottom:3px solid var(--oro);font-weight:bol
 .container{max-width:1400px;margin:16px auto;padding:0 10px 60px;}
 .card{background:white;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:18px 20px;margin-bottom:16px;}
 .card h2{color:var(--blu);font-size:.95rem;margin-bottom:14px;padding-bottom:7px;border-bottom:2px solid var(--azzurro);}
-
-/* Login */
 .login-screen{max-width:460px;margin:40px auto;}
 .login-screen .card{padding:28px;}
 .form-row{margin-bottom:12px;}
@@ -33,11 +26,14 @@ nav button.active{color:white;border-bottom:3px solid var(--oro);font-weight:bol
 .form-row input:focus,.form-row select:focus{outline:none;border-color:var(--blu2);}
 .primo-extra{display:none;border-top:1px dashed var(--bordo);padding-top:12px;margin-top:12px;}
 .primo-extra.show{display:block;}
-
-label{display:block;font-size:.8rem;font-weight:bold;color:#444;margin-bottom:3px;}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:560px;margin:0 auto;}
+.home-card{background:white;border:3px solid var(--bordo);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .25s;}
+.home-card:hover{border-color:var(--blu2);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.12);}
+.home-card .icon{font-size:2.8rem;margin-bottom:10px;}
+.home-card .title{font-size:1rem;font-weight:bold;color:var(--blu);margin-bottom:6px;}
+.home-card .sub{font-size:.78rem;color:#777;line-height:1.5;}
 input[type=text],input[type=password],input[type=email],select{padding:7px 10px;border:1.5px solid var(--bordo);border-radius:6px;font-size:.88rem;}
 input:focus,select:focus{outline:none;border-color:var(--blu2);}
-
 .alert{padding:9px 13px;border-radius:6px;margin-bottom:10px;font-size:.84rem;display:none;}
 .alert.show{display:block;}
 .alert-ok{background:#e8f5e0;border-left:4px solid var(--verde);color:#3a6020;}
@@ -50,8 +46,6 @@ input:focus,select:focus{outline:none;border-color:var(--blu2);}
 .btn-outline{background:none;border:1.5px solid var(--blu2);color:var(--blu2);}.btn-outline:hover{background:var(--azzurro);}
 .btn-sm{padding:4px 10px;font-size:.78rem;}
 .btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;}
-
-/* Allievi tabs */
 .allievi-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
 .allievo-tab{padding:6px 14px;border:2px solid var(--bordo);border-radius:20px;font-size:.82rem;font-weight:bold;cursor:pointer;background:white;color:#555;transition:all .2s;display:flex;align-items:center;gap:6px;}
 .allievo-tab:hover{border-color:var(--blu2);color:var(--blu);}
@@ -59,8 +53,6 @@ input:focus,select:focus{outline:none;border-color:var(--blu2);}
 .allievo-tab img{width:20px;height:20px;border-radius:50%;object-fit:cover;}
 .allievo-tab .del-x{background:rgba(255,255,255,.3);border:none;color:inherit;width:16px;height:16px;border-radius:50%;font-size:.68rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;}
 .allievo-tab .del-x:hover{background:rgba(200,0,0,.7);color:white;}
-
-/* Foto allievo */
 .foto-box{display:flex;align-items:center;gap:14px;background:#f8f9fa;border:2px dashed var(--bordo);border-radius:8px;padding:12px;margin-bottom:14px;}
 .foto-circle{width:66px;height:66px;border-radius:50%;background:#dde;border:3px solid var(--azzurro);display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;cursor:pointer;flex-shrink:0;}
 .foto-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
@@ -68,14 +60,10 @@ input:focus,select:focus{outline:none;border-color:var(--blu2);}
 .foto-info strong{color:var(--blu);font-size:.95rem;display:block;margin-bottom:3px;}
 .foto-label{padding:6px 14px;border:2px solid var(--blu2);border-radius:6px;font-size:.8rem;font-weight:bold;color:var(--blu);cursor:pointer;display:inline-block;transition:all .2s;}
 .foto-label:hover{background:var(--blu2);color:white;}
-
-/* Note */
 .note-box{background:#fffbeb;border-left:4px solid var(--arancio);border-radius:0 8px 8px 0;padding:12px;margin-bottom:16px;}
-.note-box label{font-size:.78rem;font-weight:bold;color:var(--arancio);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.note-box label{font-size:.78rem;font-weight:bold;color:var(--arancio);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:block;}
 .note-box textarea{width:100%;min-height:80px;border:1px solid var(--bordo);border-radius:6px;padding:8px;font-size:.87rem;resize:vertical;background:white;outline:none;font-family:inherit;line-height:1.5;}
 .note-box textarea:focus{border-color:var(--arancio);}
-
-/* Tabella valutazioni */
 .eval-table{width:100%;border-collapse:collapse;font-size:.82rem;}
 .eval-table th{background:var(--blu);color:white;padding:9px 12px;text-align:left;font-weight:600;}
 .eval-table th.center{text-align:center;}
@@ -85,37 +73,31 @@ input:focus,select:focus{outline:none;border-color:var(--blu2);}
 .semaforo-row td{background:var(--grigio);font-weight:600;font-size:.79rem;padding:5px 12px;}
 .total-row td{background:var(--blu);color:white;font-weight:bold;font-size:.95rem;padding:11px 12px;}
 .peso-badge{display:inline-block;background:#555;color:white;font-size:.68rem;font-weight:bold;padding:2px 6px;border-radius:8px;white-space:nowrap;}
-
-/* Select voto */
-.voto-sel{padding:5px 8px;border:2px solid var(--bordo);border-radius:6px;font-size:.81rem;min-width:130px;cursor:pointer;outline:none;font-family:inherit;transition:border-color .2s;}
-.voto-sel:focus{border-color:var(--blu2);}
+.voto-sel{padding:5px 8px;border:2px solid var(--bordo);border-radius:6px;font-size:.81rem;min-width:130px;cursor:pointer;outline:none;font-family:inherit;}
 .v-ns{background:#f1f5f9;color:#64748b;}
 .v-nr{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
 .v-da{background:#fef3c7;color:#92400e;border-color:#fcd34d;}
 .v-suf{background:#fef9c3;color:#713f12;border-color:#fde047;}
 .v-buo{background:#ccfbf1;color:#0f766e;border-color:#5eead4;}
 .v-ott{background:#dcfce7;color:#15803d;border-color:#86efac;}
-
-/* Semaforo */
 .sem-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.76rem;font-weight:bold;}
 .sem-badge::before{content:'';width:9px;height:9px;border-radius:50%;flex-shrink:0;}
 .sem-r{background:#fee2e2;color:#b91c1c;}.sem-r::before{background:#b91c1c;}
 .sem-g{background:#fef3c7;color:#92400e;}.sem-g::before{background:#d97706;}
 .sem-v{background:#dcfce7;color:#15803d;}.sem-v::before{background:#16a34a;}
 .sem-0{background:#f1f5f9;color:#64748b;}.sem-0::before{background:#cbd5e1;}
-
-/* Score box */
 .score-box{display:inline-flex;flex-direction:column;align-items:center;background:white;border:3px solid var(--bordo);border-radius:10px;padding:10px 18px;min-width:80px;}
 .score-box .sval{font-size:1.7rem;font-weight:800;color:var(--blu);}
-.score-box .slbl{font-size:.68rem;color:#666;font-weight:600;}
+.score-box .slbl{font-size:.68rem;color:#666;font-weight:600;text-align:center;}
 .score-box.pass{border-color:var(--verde);}.score-box.pass .sval{color:var(--verde);}
 .score-box.fail{border-color:var(--rosso);}.score-box.fail .sval{color:var(--rosso);}
-
-/* Non promosso warning */
 .np-warn{background:#fee2e2;border:2px solid var(--rosso);border-radius:8px;padding:9px 14px;font-size:.84rem;font-weight:bold;color:var(--rosso);margin-bottom:12px;display:none;align-items:center;gap:8px;}
 .np-warn.show{display:flex;}
-
-/* Admin */
+.op-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.op-table th{background:var(--teal);color:white;padding:9px 12px;text-align:left;font-weight:600;}
+.op-table td{padding:7px 12px;border-bottom:1px solid #eee;vertical-align:middle;}
+.op-table tr:hover td{background:var(--teal2);}
+.op-macro td{background:var(--teal2);font-weight:bold;color:var(--teal);padding:10px 12px;}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
 .toolbar input,.toolbar select{width:auto;flex:1;min-width:120px;}
 .badge{background:var(--blu2);color:white;border-radius:20px;padding:2px 8px;font-size:.74rem;font-weight:bold;}
@@ -142,116 +124,123 @@ table.riepilogo td{padding:6px 9px;}
 .logout-btn{font-size:.76rem;margin-left:10px;padding:3px 9px;}
 .add-row{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;}
 .add-row input[type=text]{flex:1;min-width:140px;max-width:260px;}
-
 .page{display:none;}.page.active{display:block;}
 .spinner{display:none;width:16px;height:16px;border:3px solid #ccc;border-top-color:var(--blu2);border-radius:50%;animation:spin .7s linear infinite;margin:12px auto;}
 @keyframes spin{to{transform:rotate(360deg)}}
-
 .save-toast{position:fixed;bottom:18px;right:18px;background:var(--verde);color:white;padding:10px 18px;border-radius:10px;font-size:.85rem;font-weight:bold;box-shadow:0 4px 14px rgba(0,0,0,.2);display:none;z-index:200;align-items:center;gap:8px;}
 .save-toast.show{display:flex;}
+@media(max-width:500px){.home-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="uploadFoto(this)">
-
 <header>
-  <h1>⛵ CVC – Valutazione Formazione Istruttori</h1>
+  <h1>&#9973; CVC - Valutazione Formazione Istruttori</h1>
   <div class="hdr-info" id="hdr-info"></div>
 </header>
 <nav id="main-nav" style="display:none;">
-  <button class="active" onclick="showPage('scheda',this)">📋 Valutazione</button>
-  <button onclick="showPage('admin',this)">🔒 Admin</button>
-  <button onclick="doLogout()" style="margin-left:auto;">↩ Esci</button>
+  <button id="nav-home" onclick="showPage('home',this)">&#127968; Home</button>
+  <button id="nav-scheda" onclick="showPage('scheda',this)">&#128203; Valutazione</button>
+  <button id="nav-op" onclick="showPage('operativo',this)">&#128676; Operativo</button>
+  <button id="nav-admin" onclick="showPage('admin',this)">&#128274; Admin</button>
+  <button onclick="doLogout()" style="margin-left:auto;">&#8617; Esci</button>
 </nav>
-
-<div id="save-toast" class="save-toast">✅ Salvato</div>
-
+<div id="save-toast" class="save-toast">&#10003; Salvato</div>
 <div class="container">
 
-<!-- ══════════ LOGIN ══════════ -->
 <div id="page-login" class="page active login-screen">
   <div class="card">
-    <h2 style="text-align:center;color:var(--blu);margin-bottom:20px;">⛵ Accesso Valutazione</h2>
+    <h2 style="text-align:center;color:var(--blu);margin-bottom:20px;">&#9973; Accesso Valutazione</h2>
     <div id="login-alert" class="alert alert-err"><span id="login-err"></span></div>
-    <div class="form-row">
-      <label>Numero Turno (1–60)</label>
-      <input type="number" id="l-turno" min="1" max="60" placeholder="es. 5" oninput="checkPrimo()">
-    </div>
-    <div class="form-row">
-      <label>Tipo Corso</label>
+    <div class="form-row"><label>Numero Turno (1-60)</label>
+      <input type="number" id="l-turno" min="1" max="60" placeholder="es. 5" oninput="checkPrimo()"></div>
+    <div class="form-row"><label>Tipo Corso</label>
       <select id="l-corso" onchange="checkPrimo()">
-        <option value="">— Seleziona —</option>
+        <option value="">- Seleziona -</option>
         <option value="ADV">ADV</option>
         <option value="Istruttori1">Istruttori 1</option>
         <option value="IstruttoriC3">Istruttori C3</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Password Turno</label>
-      <input type="password" id="l-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')doTurnoLogin()">
-    </div>
+      </select></div>
+    <div class="form-row"><label>Password Turno</label>
+      <input type="password" id="l-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')doTurnoLogin()"></div>
     <div class="primo-extra" id="primo-extra">
-      <p style="font-size:.81rem;color:#666;margin-bottom:10px;">✨ Primo accesso: completa i dati per creare il turno.</p>
+      <p style="font-size:.81rem;color:#666;margin-bottom:10px;">Prima apertura: inserisci i dati per creare il turno.</p>
       <div class="form-row"><label>Capo Turno</label><input type="text" id="l-capo" placeholder="Nome e Cognome"></div>
       <div class="form-row"><label>Email Capo Turno</label><input type="email" id="l-email" placeholder="es. mario.rossi@email.it"></div>
     </div>
-
-    <div style="margin-top:16px;padding:13px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;font-size:.75rem;color:#555;max-height:170px;overflow-y:auto;line-height:1.5;">
+    <div style="margin-top:16px;padding:13px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;font-size:.75rem;color:#555;max-height:150px;overflow-y:auto;line-height:1.5;">
       <strong style="color:var(--blu);font-size:.8rem;">Disclaimer sul trattamento dei dati personali</strong><br><br>
-      Ai sensi del Regolamento (UE) 2016/679, ogni utente che inserisce, carica o gestisce dati personali all'interno della presente piattaforma dichiara di essere direttamente responsabile della liceità, correttezza e pertinenza dei dati trattati.<br><br>
-      L'utente si impegna a caricare esclusivamente dati necessari e pertinenti alle finalità del corso, a garantire di avere idonea base giuridica per il trattamento dei dati inseriti, e a non utilizzare i dati per finalità diverse o non autorizzate. I dati devono essere utilizzati esclusivamente per finalità didattiche e organizzative del corso.
+      Ai sensi del Regolamento (UE) 2016/679, ogni utente dichiara di essere direttamente responsabile della licita, correttezza e pertinenza dei dati trattati. I dati devono essere utilizzati esclusivamente per finalita didattiche e organizzative del corso.
     </div>
     <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
       <input type="checkbox" id="disclaimer-check" style="margin-top:2px;width:16px;height:16px;cursor:pointer;flex-shrink:0;">
-      <label for="disclaimer-check" style="font-size:.8rem;color:#333;cursor:pointer;line-height:1.4;font-weight:normal;">
-        Ho letto e accetto il disclaimer sul trattamento dei dati personali
-      </label>
+      <label for="disclaimer-check" style="font-size:.8rem;color:#333;cursor:pointer;line-height:1.4;font-weight:normal;">Ho letto e accetto il disclaimer sul trattamento dei dati personali</label>
     </div>
     <div class="btn-row" style="justify-content:space-between;margin-top:16px;">
-      <button class="btn btn-success" onclick="doTurnoLogin()">Apri Valutazione →</button>
-      <button class="btn btn-outline btn-sm" onclick="showPage('admin')">🔒 Admin</button>
+      <button class="btn btn-success" onclick="doTurnoLogin()">Apri &rarr;</button>
+      <button class="btn btn-outline btn-sm" onclick="showPage('admin')">&#128274; Admin</button>
     </div>
   </div>
 </div>
 
-<!-- ══════════ SCHEDA VALUTAZIONE ══════════ -->
+<div id="page-home" class="page">
+  <div class="card">
+    <h2>Benvenuto &mdash; <span id="home-subtitle"></span></h2>
+    <p style="font-size:.86rem;color:#666;margin-bottom:20px;">Scegli la sezione su cui vuoi lavorare:</p>
+    <div class="home-grid">
+      <div class="home-card" onclick="showPage('scheda',document.getElementById('nav-scheda'))">
+        <div class="icon">&#128203;</div>
+        <div class="title">Valutazione</div>
+        <div class="sub">Scheda di valutazione conclusiva con criteri pesati, semafori e punteggio totale</div>
+      </div>
+      <div class="home-card" onclick="showPage('operativo',document.getElementById('nav-op'))">
+        <div class="icon">&#128676;</div>
+        <div class="title">Operativo</div>
+        <div class="sub">Scheda obiettivi operativi pratici: vela, sicurezza, didattica, logistica</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="page-scheda" class="page">
   <div class="card">
-    <h2>📋 <span id="scheda-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
-    <div id="alert-ok"  class="alert alert-ok">✅ Salvato con successo!</div>
+    <h2>&#128203; <span id="scheda-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <div id="alert-ok" class="alert alert-ok">Salvato!</div>
     <div id="alert-err" class="alert alert-err"><span id="err-msg"></span></div>
-
-    <!-- Allievi tabs -->
     <div class="allievi-tabs" id="allievi-tabs"></div>
-
-    <!-- Aggiungi allievo -->
     <div class="add-row">
-      <input type="text" id="nuovo-allievo" placeholder="Nome allievo…" onkeydown="if(event.key==='Enter')aggiungiAllievo()">
-      <button class="btn btn-outline btn-sm" onclick="aggiungiAllievo()">+ Aggiungi allievo</button>
-      <button class="btn btn-outline btn-sm" onclick="esportaCSV()">📥 Esporta CSV</button>
+      <input type="text" id="nuovo-allievo" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')aggiungiAllievo()">
+      <button class="btn btn-outline btn-sm" onclick="aggiungiAllievo()">+ Aggiungi</button>
+      <button class="btn btn-outline btn-sm" onclick="esportaCSV('val')">CSV Valutazione</button>
     </div>
-
-    <!-- Contenuto allievo corrente -->
     <div id="allievo-content" style="margin-top:16px;"></div>
   </div>
 </div>
 
-<!-- ══════════ ADMIN ══════════ -->
+<div id="page-operativo" class="page">
+  <div class="card">
+    <h2>&#128676; <span id="op-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <p style="font-size:.8rem;color:#888;margin-bottom:10px;">Gli allievi si aggiungono dalla scheda Valutazione.</p>
+    <div class="allievi-tabs" id="allievi-tabs-op"></div>
+    <div id="allievo-op-content" style="margin-top:8px;"></div>
+  </div>
+</div>
+
 <div id="page-admin" class="page">
   <div id="admin-gate" class="card admin-gate">
-    <h2>🔒 Accesso Admin</h2>
+    <h2>&#128274; Accesso Admin</h2>
     <input type="password" id="admin-pwd" placeholder="Password admin" onkeydown="if(event.key==='Enter')doAdminLogin()">
     <div class="btn-row" style="justify-content:center;margin-top:10px;">
       <button class="btn btn-primary" onclick="doAdminLogin()">Accedi</button>
-      <button class="btn btn-outline btn-sm" onclick="showPage('login')">← Indietro</button>
+      <button class="btn btn-outline btn-sm" onclick="showPage('login')">Indietro</button>
     </div>
     <div id="admin-err" style="color:var(--rosso);margin-top:8px;display:none;font-size:.84rem;">Password errata.</div>
   </div>
   <div id="admin-panel" style="display:none;">
     <div class="card">
-      <h2>📊 Statistiche <button class="btn btn-outline logout-btn" onclick="adminLogout()">Esci</button></h2>
+      <h2>Statistiche <button class="btn btn-outline logout-btn" onclick="adminLogout()">Esci</button></h2>
       <div class="stats-grid" id="stats-grid"></div>
-      <h3 style="color:var(--blu);margin:14px 0 6px;font-size:.88rem;">🔑 Turni e Password</h3>
+      <h3 style="color:var(--blu);margin:14px 0 6px;font-size:.88rem;">Turni e Password</h3>
       <div style="overflow-x:auto;">
         <table class="turni-table">
           <thead><tr><th>Turno</th><th>Corso</th><th>Capo Turno</th><th>Email</th><th>Password</th><th>Allievi</th><th></th></tr></thead>
@@ -260,9 +249,9 @@ table.riepilogo td{padding:6px 9px;}
       </div>
     </div>
     <div class="card">
-      <h2>📋 Allievi e Valutazioni <span class="badge" id="count-badge">0</span></h2>
+      <h2>Allievi e Valutazioni <span class="badge" id="count-badge">0</span></h2>
       <div class="toolbar">
-        <input type="text" id="f-q" placeholder="🔍 Cerca allievo…" oninput="loadRiepilogo()">
+        <input type="text" id="f-q" placeholder="Cerca allievo..." oninput="loadRiepilogo()">
         <select id="f-corso" onchange="loadRiepilogo()">
           <option value="">Tutti i corsi</option>
           <option value="ADV">ADV</option>
@@ -274,736 +263,482 @@ table.riepilogo td{padding:6px 9px;}
       <div style="overflow-x:auto;">
         <table class="riepilogo">
           <thead><tr><th>Turno</th><th>Corso</th><th>Capo Turno</th><th>Allievo</th><th>Totale</th><th>Esito</th></tr></thead>
-          <tbody id="tab-body"><tr><td colspan="6" class="empty">Caricamento…</td></tr></tbody>
+          <tbody id="tab-body"><tr><td colspan="6" class="empty">Caricamento...</td></tr></tbody>
         </table>
       </div>
       <div id="tab-spinner" class="spinner"></div>
       <div class="btn-row">
-        <button class="btn btn-outline" onclick="adminExportCSV()">📥 Esporta CSV</button>
-        <button class="btn btn-outline" onclick="backupDB()">💾 Backup DB</button>
-        <button class="btn btn-outline" onclick="document.getElementById('restore-input').click()">📂 Restore DB</button>
-        <button class="btn btn-warning btn-sm" style="padding:8px 18px;font-size:.86rem;" onclick="cancellaFoto()">🖼️ Cancella Foto</button>
-        <button class="btn btn-danger" style="padding:8px 18px;" onclick="resetDB()">🗑️ Reset DB</button>
+        <button class="btn btn-outline" onclick="adminExportCSV()">Esporta CSV</button>
+        <button class="btn btn-outline" onclick="backupDB()">Backup DB</button>
+        <button class="btn btn-outline" onclick="document.getElementById('restore-input').click()">Restore DB</button>
+        <button class="btn btn-warning" style="padding:8px 18px;" onclick="cancellaFoto()">Cancella Foto</button>
+        <button class="btn btn-danger" style="padding:8px 18px;" onclick="resetDB()">Reset DB</button>
       </div>
       <input type="file" id="restore-input" accept=".json" style="display:none" onchange="restoreDB(this)">
-      <p style="margin-top:10px;font-size:.8rem;color:#888;">⚠️ Reset DB cancella tutti i dati. Esporta il Backup prima di fare Reset o Restore.</p>
     </div>
   </div>
 </div>
-
-</div><!-- /container -->
-
+</div>
 <script>
-const API = '';
+const API='';
+const VOTI=['','Non svolto','Non Raggiunto','Da Affinare','Sufficiente','Buono','Ottimo'];
+const PESI_VOTI={'':0,'Non svolto':2,'Non Raggiunto':0,'Da Affinare':1,'Sufficiente':2,'Buono':3,'Ottimo':4};
+const VOTO_CLASS={'':'','Non svolto':'v-ns','Non Raggiunto':'v-nr','Da Affinare':'v-da','Sufficiente':'v-suf','Buono':'v-buo','Ottimo':'v-ott'};
+const CORSI_LABEL={ADV:'ADV',Istruttori1:'Istruttori 1',IstruttoriC3:'Istruttori C3'};
+const SOGLIE={ADV:null,Istruttori1:66,IstruttoriC3:66};
 
-// ── Schemi valutazione ────────────────────────────────────────────────────────
-const VOTI = ['', 'Non svolto', 'Non Raggiunto', 'Da Affinare', 'Sufficiente', 'Buono', 'Ottimo'];
-const PESI_VOTI = {'': 0, 'Non svolto': 2, 'Non Raggiunto': 0, 'Da Affinare': 1, 'Sufficiente': 2, 'Buono': 3, 'Ottimo': 4};
-const VOTO_CLASS = {'': '', 'Non svolto': 'v-ns', 'Non Raggiunto': 'v-nr', 'Da Affinare': 'v-da', 'Sufficiente': 'v-suf', 'Buono': 'v-buo', 'Ottimo': 'v-ott'};
-
-const SCHEMA_ADV = [
+const SCHEMA_ADV=[
   {macro:'1. Navigazione a vela',items:[
-    {peso:2,desc:"È in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato"},
-    {peso:3,desc:"È in grado di eseguire le manovre fondamentali (gavitello, ancoraggio, regolazione e cambio velatura)"},
-    {peso:3,desc:"È in grado di eseguire le manovre fondamentali con metodo e consapevolezza (SN+VI)"},
+    {peso:2,desc:"E in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato"},
+    {peso:3,desc:"E in grado di eseguire le manovre fondamentali (gavitello, ancoraggio, regolazione e cambio velatura)"},
+    {peso:3,desc:"E in grado di eseguire le manovre fondamentali con metodo e consapevolezza (SN+VI)"},
   ]},
   {macro:'2. Mezzi e procedure di sicurezza',items:[
-    {peso:2,desc:"È in grado di preparare i mezzi di sicurezza e gestire il motore nel rispetto delle norme ambientali"},
-    {peso:3,desc:"È in grado di collaborare con l'istruttore durante le manovre di sicurezza"},
+    {peso:2,desc:"E in grado di preparare i mezzi di sicurezza e gestire il motore nel rispetto delle norme ambientali"},
+    {peso:3,desc:"E in grado di collaborare con l'istruttore durante le manovre di sicurezza (lancio cima, uso capra)"},
     {peso:3,desc:"Si comporta coerentemente alle procedure di sicurezza, in mare e a terra"},
   ]},
   {macro:'3. Didattica alla lavagna e in mare',items:[
-    {peso:2,desc:"È in grado di comprendere le indicazioni didattiche del CT e fare da facilitatore agli allievi"},
+    {peso:2,desc:"E in grado di comprendere le indicazioni didattiche del CT e fare da facilitatore agli allievi"},
   ]},
-  {macro:'4. Capacità gestionale e lavoro in team',items:[
-    {peso:2,desc:"È in grado di supportare il gruppo istruttori sia a terra che in mare"},
-    {peso:2,desc:"È disponibile ad accrescere la propria esperienza collaborando con il team istruttori AdV"},
-    {peso:1,desc:"Condivide e promuove le norme di comportamento (carta dei valori, inclusione, sostenibilità)"},
+  {macro:'4. Capacita gestionale e lavoro in team',items:[
+    {peso:2,desc:"E in grado di supportare il gruppo istruttori sia a terra che in mare per il raggiungimento degli obiettivi"},
+    {peso:2,desc:"E disponibile ad accrescere la propria esperienza collaborando con il team istruttori AdV"},
+    {peso:1,desc:"Condivide e promuove le norme di comportamento (carta dei valori, inclusione, sostenibilita)"},
   ]},
-  {macro:'5. Consapevolezza del ruolo – Motivazione, Impegno, Disponibilità',items:[
-    {peso:2,desc:"È consapevole di essere modello di riferimento a terra e a mare"},
-    {peso:2,desc:"È in grado di mantenere la calma in situazioni di stress e incoraggia gli altri"},
-    {peso:2,desc:"È sempre un elemento proattivo, non si tira indietro o delega ad altri"},
+  {macro:'5. Consapevolezza del ruolo - Motivazione, Impegno, Disponibilita',items:[
+    {peso:2,desc:"E consapevole di essere modello di riferimento a terra e a mare, coerente nei comportamenti"},
+    {peso:2,desc:"E in grado di mantenere la calma in situazioni di stress e incoraggia gli altri"},
+    {peso:2,desc:"E sempre un elemento proattivo su quello che c'e da fare, non si tira indietro o delega ad altri"},
   ]},
-  {macro:'6. Capacità organizzative e aspetti logistici',items:[
-    {peso:2,desc:"È in grado di supportare e facilitare le attività a mare (scalo, caletta, veleria) e a terra"},
-    {peso:1,desc:"È in grado di prevenire e risolvere piccole avarie coordinandosi con CT e staff"},
-    {peso:1,desc:"Conosce le procedure di prevenzione ed emergenza a terra e a mare"},
+  {macro:'6. Capacita organizzative e aspetti logistici',items:[
+    {peso:2,desc:"E in grado di supportare e facilitare le attivita a mare (scalo, caletta, veleria) e a terra"},
+    {peso:1,desc:"E in grado di prevenire e risolvere piccole avarie coordinandosi con il suo CT e lo staff"},
+    {peso:1,desc:"Conosce le procedure di prevenzione (incendi e infortuni) ed emergenza a terra e a mare"},
   ]},
 ];
-
-const SCHEMA_IS1 = [
+const SCHEMA_IS1=[
   {macro:'1. Navigazione a vela',items:[
     {peso:2,desc:"Conduce con buona sicurezza e autonomia sia una deriva che un cabinato"},
     {peso:3,desc:"Esegue costantemente tutte le manovre fondamentali garantendo la totale sicurezza dell'imbarcazione"},
     {peso:3,desc:"Esegue tutte le manovre con metodo e cognizione di causa, con chiara via di fuga (SN+VI)"},
   ]},
   {macro:'2. Mezzi e procedure di sicurezza',items:[
-    {peso:2,desc:"Conduce ed esegue le manovre base in autonomia con gozzo e gommone"},
-    {peso:3,desc:"Imposta manovre di avvicinamento e assistenza con metodo, ha sempre chiara la via di fuga"},
-    {peso:3,desc:"Mantiene il controllo del mezzo senza diventare pericoloso per sé e per gli assistiti"},
+    {peso:2,desc:"Conduce ed esegue le manovre base in autonomia e sufficiente sicurezza con il gozzo e il gommone"},
+    {peso:3,desc:"Imposta manovre di avvicinamento e assistenza con metodo e cognizione di causa, via di fuga chiara"},
+    {peso:3,desc:"Mantiene il controllo del mezzo senza diventare pericoloso per se e per gli assistiti"},
   ]},
   {macro:'3. Didattica alla lavagna e in mare',items:[
     {peso:3,desc:"Organizza i contenuti di un argomento individuandone i punti chiave con sufficiente conoscenza"},
-    {peso:3,desc:"Comunica con efficacia i punti chiave gestendo lavagna con parole e disegni chiari e ordinati"},
-    {peso:1,desc:"È in grado di valutare se l'obiettivo didattico è stato raggiunto"},
+    {peso:3,desc:"Comunica con sufficiente efficacia i punti chiave, gestendo la lavagna con parole e disegni chiari"},
+    {peso:1,desc:"E in grado di valutare se l'obiettivo didattico e stato raggiunto"},
   ]},
-  {macro:'4. Capacità gestionale e team – Organizzazione e Comunicazione',items:[
+  {macro:'4. Capacita gestionale e team - Organizzazione e Comunicazione',items:[
     {peso:2,desc:"Lavora in team per il raggiungimento dell'obiettivo comune"},
     {peso:2,desc:"Organizza, gestisce e comunica esercizi a mare secondo l'obiettivo e nei tempi stabiliti"},
-    {peso:1,desc:"È disponibile a condividere la propria esperienza nautica a disposizione del team"},
+    {peso:1,desc:"E disponibile a condividere la propria esperienza nautica a disposizione del team"},
   ]},
-  {macro:'5. Consapevolezza del ruolo – Responsabilità, Motivazione, Impegno',items:[
-    {peso:2,desc:"Crede nel ruolo dell'istruttore come modello, comprende responsabilità e promuove carta dei valori"},
-    {peso:2,desc:"Mantiene calma e lucidità sotto forte stress fisico/emotivo e la infonde negli altri"},
-    {peso:2,desc:"Gestisce consapevolmente le proprie risorse psicofisiche, è proattivo verso istruttori, allievi e staff"},
+  {macro:'5. Consapevolezza del ruolo - Responsabilita, Motivazione, Impegno',items:[
+    {peso:2,desc:"Crede nel ruolo dell'istruttore come modello, comprende le responsabilita e promuove la carta dei valori"},
+    {peso:2,desc:"Mantiene calma e lucidita sotto forte stress fisico/emotivo e la infonde negli altri"},
+    {peso:2,desc:"Gestisce consapevolmente le proprie risorse psicofisiche, e proattivo verso istruttori, allievi e staff"},
   ]},
-  {macro:'6. Capacità organizzative e aspetti logistici',items:[
-    {peso:2,desc:"Gestisce e coordina attività a mare (comandata mezzi, veleria, scalo, caletta) e a terra"},
-    {peso:1,desc:"Gestisce e indirizza le procedure per la manutenzione ordinaria e piccole avarie"},
+  {macro:'6. Capacita organizzative e aspetti logistici',items:[
+    {peso:2,desc:"Gestisce e coordina attivita a mare (comandata mezzi, veleria, scalo, caletta) e a terra (cucina, orari)"},
+    {peso:1,desc:"Gestisce e indirizza le procedure per la manutenzione ordinaria e piccole avarie con i riferimenti staff"},
     {peso:1,desc:"Conosce, promuove e segue le procedure di prevenzione ed emergenza a terra e a mare"},
   ]},
 ];
-
-const SCHEMA_C3 = [
+const SCHEMA_C3=[
   {macro:'1. Navigazione a vela',items:[
     {peso:2,desc:"Conduce con buona sicurezza e autonomia un cabinato e il suo equipaggio anche in spazi ristretti"},
-    {peso:3,desc:"Esegue/fa eseguire costantemente tutte le manovre fondamentali del nuovo corso garantendo sicurezza"},
+    {peso:3,desc:"Esegue/fa eseguire costantemente tutte le manovre fondamentali del nuovo corso garantendo sicurezza totale"},
     {peso:3,desc:"Esegue tutte le manovre con metodo e cognizione di causa, avendo sempre chiara la via di fuga (SN+VI)"},
   ]},
   {macro:'2. Procedure di sicurezza',items:[
-    {peso:2,desc:"Ha consapevolezza della presa in consegna dell'imbarcazione ed esegue verifiche di sicurezza"},
-    {peso:3,desc:"Ha visione di spazio, tempo ed energie dell'equipaggio per rientri e ancoraggi in sicurezza"},
+    {peso:2,desc:"Ha consapevolezza della presa in consegna dell'imbarcazione ed esegue le verifiche di sicurezza"},
+    {peso:3,desc:"Ha visione di spazio, tempo ed energie dell'equipaggio per eseguire rientri e ancoraggi in sicurezza"},
     {peso:3,desc:"Mantiene il controllo del mezzo ad equipaggio ridotto senza diventare pericoloso"},
   ]},
   {macro:'3. Didattica alla lavagna e in mare',items:[
-    {peso:3,desc:"Organizza i contenuti, esegue una lezione di 25 min, gestisce anche le domande difficili"},
+    {peso:3,desc:"Organizza i contenuti ed esegue una lezione di 25 min, gestisce le domande difficili"},
     {peso:2,desc:"Esegue lezioni a bordo con efficacia, spiega manovre, lascia sbagliare garantendo la sicurezza"},
     {peso:2,desc:"Valuta il raggiungimento dell'obiettivo didattico, esegue debriefing con comunicazione positiva"},
   ]},
-  {macro:'4. Capacità gestionale e team – Organizzazione e Comunicazione',items:[
-    {peso:2,desc:"Recepisce nuove informazioni, lascia andare vecchie abitudini non in linea con CVC"},
-    {peso:2,desc:"Organizza e comunica il programma della giornata, si coordina con CT via VHF in navigazione di flotta"},
+  {macro:'4. Capacita gestionale e team - Organizzazione e Comunicazione',items:[
+    {peso:2,desc:"Recepisce le nuove informazioni e riesce a lasciare andare vecchie abitudini non in linea con CVC"},
+    {peso:2,desc:"Organizza e comunica il programma della giornata, si coordina con il CT via VHF in navigazione di flotta"},
     {peso:1,desc:"Riesce a lavorare in gruppo evitando assoli"},
   ]},
-  {macro:'5. Consapevolezza del ruolo – Responsabilità, Motivazione, Impegno',items:[
-    {peso:2,desc:"È modello di riferimento, prevede le mancanze degli allievi, promuove carta dei valori e inclusione"},
-    {peso:2,desc:"Mantiene calma e lucidità sotto forte stress fisico/emotivo e la infonde negli altri"},
-    {peso:2,desc:"È promotore come leader piuttosto che come persona al comando"},
+  {macro:'5. Consapevolezza del ruolo - Responsabilita, Motivazione, Impegno',items:[
+    {peso:2,desc:"E modello di riferimento, prevede le mancanze degli allievi, promuove la carta dei valori e l'inclusione"},
+    {peso:2,desc:"Mantiene calma e lucidita sotto forte stress fisico/emotivo e la infonde negli altri"},
+    {peso:2,desc:"E promotore come leader piuttosto che come persona al comando"},
   ]},
-  {macro:'6. Capacità organizzative e aspetti logistici',items:[
+  {macro:'6. Capacita organizzative e aspetti logistici',items:[
     {peso:2,desc:"Gestisce la comandata a bordo e si coordina con le altre imbarcazioni tenendo conto dell'impatto ambientale"},
     {peso:1,desc:"Gestisce ed esegue piccole avarie (circuito trinca e 3D) comunicando efficacemente allo staff"},
-    {peso:1,desc:"Conosce, promuove e segue le procedure di presa in carico, monitoraggio e riconsegna barca"},
+    {peso:1,desc:"Conosce, promuove e segue le procedure di presa in carico, monitoraggio e riconsegna della barca"},
   ]},
 ];
+const SCHEMAS={ADV:SCHEMA_ADV,Istruttori1:SCHEMA_IS1,IstruttoriC3:SCHEMA_C3};
 
-const SCHEMAS = {ADV: SCHEMA_ADV, Istruttori1: SCHEMA_IS1, IstruttoriC3: SCHEMA_C3};
-const SOGLIE  = {ADV: null, Istruttori1: 66, IstruttoriC3: 66};
-const CORSI_LABEL = {ADV:'ADV', Istruttori1:'Istruttori 1', IstruttoriC3:'Istruttori C3'};
+const OP_ADV=[
+  {macro:'1a. Condurre deriva/cabinato - Tecnica, Senso Nautico, Visione, Progressione',items:[
+    'Armo/disarmo imbarcazione','Adeguamento velatura, terzaroli, solo Fiocco/randa',
+    'Partenza e arrivo gavitello','Accosti barca alla fonda','Accosti in navigazione',
+    'Accosti in banchina','Barca ferma','MOB','Panna',
+    'Terminologia e gergo nautico','Riconoscimento perimetri navigazione/pilotaggio',
+  ]},
+  {macro:'1b. Condurre deriva in autonomia e sicurezza',items:[
+    'Scuffia e raddrizzamento','Navigazione solo fiocco / solo randa',
+    'Partenza e arrivo spiaggia','Navigazione senza timone',
+  ]},
+  {macro:'1c. Condurre cabinato in autonomia e sicurezza',items:[
+    'Quick stop','Navigazione solo fiocco / solo randa','Ormeggio e tonneggio',
+    'Rimorchio a vela','Ancoraggio','La carta nautica','Navigazione in flottiglia',
+  ]},
+  {macro:'2. Supporto mezzi e procedure di sicurezza',items:[
+    'Preparazione mezzi','Lancio cima','Collabora alle manovre di assistenza',
+  ]},
+  {macro:'3. Didattica alla lavagna e in mare',items:[
+    'E in grado di navigare in posizione di maggior sicurezza',
+    'E in grado di comunicare con gli istruttori e con la flotta',
+    "E in grado di ricondurre l'intera flotta all'esercizio proposto",
+  ]},
+  {macro:'4. Capacita gestionale e lavoro in team (AdV di giornata)',items:[
+    'Capacita di lavorare in team','Sa essere di esempio',"Favorisce l'inclusione e il rispetto",
+  ]},
+  {macro:'5. Consapevolezza del ruolo - Motivazione, Impegno, Disponibilita',items:[
+    'Motivazione','Impegno','Disponibilita',
+    'Gestisce le relazioni con rispetto, ottiene e da collaborazione e consenso degli altri',
+    'Attua le norme di vita in rispetto della sicurezza e prevenzione incidenti',
+  ]},
+  {macro:'6. Capacita organizzative e aspetti logistici (AdV di giornata)',items:[
+    'Gestione piccole manutenzioni e avarie','Gestione comandata','Gestione comandata base',
+    'Gestione scalo (avarie, efficienza barche, pulizia e ordine scalo)',
+    'Conosce il manuale AT per la gestione della cucina','Gestione caletta',
+  ]},
+];
+const OP_IS=[
+  {macro:'1. Navigazione a vela',items:[
+    'Scuffia e raddrizzamento','Partenza e arrivo gavitello','Partenza e arrivo spiaggia',
+    'Ormeggio e tonneggio','Ancoraggio (ancoraggio ganciato)','QUICK-Stop','MOB',
+    'Adeguamento velatura, terzaroli, solo Fiocco/randa','Accosti',
+    'Gestione assetti, propulsione e direzione','Navigazione in flottiglia','Rimorchio a vela',
+  ]},
+  {macro:'2. Mezzi e procedure di sicurezza',items:[
+    'M0-Gozzo - Preparazione mezzo e ormeggio/tonneggio (con e senza trappa)',
+    'M0-Gozzo fermo prua e poppa al vento','M0-Gozzo presa gavitello prua/poppa',
+    'M0-Gozzo 360 gradi (orario barra fissa)','M0-Gozzo - Accostare in banchina + trappa',
+    'M0-Gozzo uso cima rimorchio/capra','M1-Gozzo accosto barca in navigazione',
+    'M1-Gozzo accosto barca alla fonda','M1-Gozzo rimorchio in poppa',
+    'M1-Gozzo rimorchio in andana','M1-Gozzo ancoraggio',
+    'M2-Gozzo assistenza e raddr. scuf 90','M2-Gozzo assistenza e raddr. scuf 180 albero piantato',
+    'M2-Gozzo assistenza barca a scogli anche sottovento','M2-Gozzo Recupero UAM',
+    'G1-Gommone presa gavitello prua/poppa','G2-Gommone accosto barca in navigazione/fonda',
+    'G3-Gommone Recupero UAM','G4-Traino barca in andana',
+  ]},
+  {macro:'3. Didattica alla lavagna e in mare',items:[
+    'Individuare e organizzare sulla lavagna i punti chiave della lezione',
+    'Corretto uso dello spazio della lavagna (titolo, parole chiave, colori, grandezza carattere)',
+    "Chiarezza vocale dell'esposizione alla lavagna","Chiarezza grafica dell'esposizione alla lavagna",
+    "Feed back - Capacita di mantenere attiva l'attenzione",
+    "Conseguente all'esercizio e in grado di posizionare boe per eseguirlo",
+    'Gestione della didattica a bordo derive/cabinato e debrief dopo la manovra',
+  ]},
+  {macro:'4. Capacita gestionale e lavoro in team (istruttore di giornata)',items:[
+    'E coerente, rappresenta un modello da seguire',
+    'Disinnescare momenti di confronto non necessari',
+    "Favorisce l'inclusione e la creazione dell'equipaggio",
+  ]},
+  {macro:'5. Consapevolezza del ruolo - Motivazione, Impegno, Disponibilita',items:[
+    "Ha sempre dotazioni sicurezza e l'abbigliamento adeguato",
+    'Si comporta in modo da essere sempre un riferimento',
+    'Comprende il suo livello energetico, e in grado di gestire le proprie risorse',
+    'Riconosce quando e in difficolta o non sa','Mostra un atteggiamento proattivo',
+  ]},
+  {macro:'6. Capacita organizzative e aspetti logistici (istruttore di giornata)',items:[
+    'Gestisce la comandata a terra','Gestisce lo scalo/veleria/caletta',
+    'Gestisce e coordina ormeggio, sgotto, rabbocco mezzi sicurezza',
+    'E in grado di comunicare con lo staff per gestire avarie straordinarie',
+    'Conosce le procedure di prevenzione e gestione emergenze sanitarie',
+    'Conosce le procedure antincendio e i punti di raccolta',
+    'E consapevole degli interruttori di servizio principali delle basi',
+    'Conosce le procedure della cucina',
+  ]},
+];
+const OP_SCHEMAS={ADV:OP_ADV,Istruttori1:OP_IS,IstruttoriC3:OP_IS};
 
-// ── Stato ──────────────────────────────────────────────────────────────────────
-let session = null, adminToken = null;
-let allievi = [];      // [{id, nome, foto_url, note, grades:{}}]
-let currentAllievo = null; // id corrente
-let fotoUploadId = null;
-
-function saveSession(s){ session=s; sessionStorage.setItem('cvc_is',JSON.stringify(s)); }
-function loadSession(){ try{return JSON.parse(sessionStorage.getItem('cvc_is')||'null');}catch{return null;} }
-
-async function fetchAuth(url, opts={}){
-  const res = await fetch(url, opts);
-  if(res.status===401 && session){ doLogout(); return null; }
-  return res;
-}
+let session=null,adminToken=null,allievi=[],currentAllievo=null,currentAllievoOp=null,fotoUploadId=null;
+function saveSession(s){session=s;sessionStorage.setItem('cvc_is',JSON.stringify(s));}
+function loadSession(){try{return JSON.parse(sessionStorage.getItem('cvc_is')||'null');}catch{return null;}}
+async function fetchAuth(url,opts={}){const res=await fetch(url,opts);if(res.status===401&&session){doLogout();return null;}return res;}
 
 async function init(){
-  const saved = loadSession();
-  if(saved){
-    const res = await fetch(`${API}/api/verify`, {headers:{'X-Auth-Token':saved.token}});
-    if(res.ok){ session=saved; await enterApp(); return; }
-    sessionStorage.clear();
-  }
+  const saved=loadSession();
+  if(saved){const res=await fetch(API+'/api/verify',{headers:{'X-Auth-Token':saved.token}});if(res.ok){session=saved;await enterApp();return;}sessionStorage.clear();}
   showPage('login');
 }
 
 async function enterApp(){
   document.getElementById('main-nav').style.display='flex';
-  document.getElementById('hdr-info').innerHTML =
-    `T<strong>${session.turno}</strong> &nbsp;${session.capoturno} &nbsp;<span class="tag">${CORSI_LABEL[session.corso]||session.corso}</span>`;
-  document.getElementById('scheda-subtitle').textContent =
-    `Turno ${session.turno} — ${session.capoturno} — ${CORSI_LABEL[session.corso]||session.corso}`;
-  showPage('scheda');
+  const label=CORSI_LABEL[session.corso]||session.corso;
+  document.getElementById('hdr-info').innerHTML='T<strong>'+session.turno+'</strong> &nbsp;'+session.capoturno+' &nbsp;<span class="tag">'+label+'</span>';
+  document.getElementById('home-subtitle').textContent='Turno '+session.turno+' - '+session.capoturno+' - '+label;
+  document.getElementById('scheda-subtitle').textContent='Valutazione - Turno '+session.turno+' - '+label;
+  document.getElementById('op-subtitle').textContent='Operativo - Turno '+session.turno+' - '+label;
+  showPage('home');
   await caricaAllievi();
 }
 
-// ── Login ──────────────────────────────────────────────────────────────────────
-let primoAccesso = false;
-
+let primoAccesso=false;
 async function checkPrimo(){
-  const n = parseInt(document.getElementById('l-turno').value);
-  const corso = document.getElementById('l-corso').value;
-  document.getElementById('primo-extra').classList.remove('show');
-  primoAccesso = false;
-  if(!n || n<1 || n>60 || !corso) return;
-  try{
-    const res = await fetch(`${API}/api/turno/${n}/exists?corso=${encodeURIComponent(corso)}`);
-    const d = await res.json();
-    if(!d.exists){ primoAccesso=true; document.getElementById('primo-extra').classList.add('show'); }
-  }catch{}
+  const n=parseInt(document.getElementById('l-turno').value);
+  const corso=document.getElementById('l-corso').value;
+  document.getElementById('primo-extra').classList.remove('show');primoAccesso=false;
+  if(!n||n<1||n>60||!corso)return;
+  try{const res=await fetch(API+'/api/turno/'+n+'/exists?corso='+encodeURIComponent(corso));const d=await res.json();if(!d.exists){primoAccesso=true;document.getElementById('primo-extra').classList.add('show');}}catch{}
 }
 
 async function doTurnoLogin(){
   document.getElementById('login-alert').classList.remove('show');
-  const chk = document.getElementById('disclaimer-check');
-  if(chk && !chk.checked){ showLoginErr('Devi accettare il disclaimer per continuare.'); return; }
-  const numero = parseInt(document.getElementById('l-turno').value);
-  const pwd = document.getElementById('l-pwd').value.trim();
-  const corso = document.getElementById('l-corso').value;
-  if(!numero || !pwd){ showLoginErr('Inserisci numero turno e password.'); return; }
-  if(!corso){ showLoginErr('Seleziona il tipo di corso.'); return; }
-  const payload = {numero, password:pwd, corso};
-  if(primoAccesso){
-    payload.capoturno = document.getElementById('l-capo').value.trim();
-    payload.email = document.getElementById('l-email').value.trim();
-    if(!payload.capoturno){ showLoginErr('Inserisci il Capo Turno.'); return; }
-  }
+  if(!document.getElementById('disclaimer-check').checked){showLoginErr('Devi accettare il disclaimer per continuare.');return;}
+  const numero=parseInt(document.getElementById('l-turno').value);
+  const pwd=document.getElementById('l-pwd').value.trim();
+  const corso=document.getElementById('l-corso').value;
+  if(!numero||!pwd){showLoginErr('Inserisci numero turno e password.');return;}
+  if(!corso){showLoginErr('Seleziona il tipo di corso.');return;}
+  const payload={numero,password:pwd,corso};
+  if(primoAccesso){payload.capoturno=document.getElementById('l-capo').value.trim();payload.email=document.getElementById('l-email').value.trim();if(!payload.capoturno){showLoginErr('Inserisci il Capo Turno.');return;}}
   try{
-    const res = await fetch(`${API}/api/turno/login`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
-    });
-    const d = await res.json();
-    if(!res.ok){
-      if(d.primo_accesso){ primoAccesso=true; document.getElementById('primo-extra').classList.add('show'); }
-      showLoginErr(d.error||'Errore'); return;
-    }
-    saveSession(d); await enterApp();
-  }catch(e){ showLoginErr('Errore di connessione.'); }
+    const res=await fetch(API+'/api/turno/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await res.json();
+    if(!res.ok){if(d.primo_accesso){primoAccesso=true;document.getElementById('primo-extra').classList.add('show');}showLoginErr(d.error||'Errore');return;}
+    saveSession(d);await enterApp();
+  }catch{showLoginErr('Errore di connessione.');}
 }
+function showLoginErr(m){document.getElementById('login-err').textContent=m;document.getElementById('login-alert').classList.add('show');}
+function doLogout(){session=null;adminToken=null;sessionStorage.removeItem('cvc_is');allievi=[];currentAllievo=null;currentAllievoOp=null;document.getElementById('main-nav').style.display='none';document.getElementById('hdr-info').textContent='';document.getElementById('allievi-tabs').innerHTML='';document.getElementById('allievi-tabs-op').innerHTML='';document.getElementById('allievo-content').innerHTML='';document.getElementById('allievo-op-content').innerHTML='';showPage('login');}
 
-function showLoginErr(m){ document.getElementById('login-err').textContent=m; document.getElementById('login-alert').classList.add('show'); }
-
-function doLogout(){
-  session=null; adminToken=null;
-  sessionStorage.removeItem('cvc_is');
-  allievi=[]; currentAllievo=null;
-  document.getElementById('main-nav').style.display='none';
-  document.getElementById('hdr-info').textContent='';
-  document.getElementById('allievi-tabs').innerHTML='';
-  document.getElementById('allievo-content').innerHTML='';
-  showPage('login');
-}
-
-// ── Carica allievi ─────────────────────────────────────────────────────────────
 async function caricaAllievi(){
-  if(!session) return;
+  if(!session)return;
   try{
-    const res = await fetchAuth(`${API}/api/allievi/${session.turno}?corso=${encodeURIComponent(session.corso)}`,
-      {headers:{'X-Auth-Token':session.token}});
-    if(!res) return;
-    const d = await res.json();
-    allievi = d.allievi || [];
-    if(allievi.length && !currentAllievo) currentAllievo = allievi[0].id;
-    renderAllievi();
-  }catch(e){}
+    const res=await fetchAuth(API+'/api/allievi/'+session.turno+'?corso='+encodeURIComponent(session.corso),{headers:{'X-Auth-Token':session.token}});
+    if(!res)return;const d=await res.json();allievi=d.allievi||[];
+    if(allievi.length){if(!currentAllievo)currentAllievo=allievi[0].id;if(!currentAllievoOp)currentAllievoOp=allievi[0].id;}
+    renderAllievi();renderAllievoOp();
+  }catch{}
 }
 
-// ── Render tabs allievi ────────────────────────────────────────────────────────
 function renderAllievi(){
-  const el = document.getElementById('allievi-tabs');
-  el.innerHTML = allievi.map(a => `
-    <div class="allievo-tab ${a.id===currentAllievo?'active':''}" onclick="selectAllievo(${a.id})">
-      ${a.foto_url ? `<img src="${a.foto_url}?t=${Date.now()}" alt="">` : ''}
-      ${escH(a.nome)}
-      <button class="del-x" onclick="event.stopPropagation();eliminaAllievo(${a.id})">✕</button>
-    </div>`).join('');
-  if(currentAllievo){
-    renderAllievoContent();
-  } else {
-    document.getElementById('allievo-content').innerHTML =
-      '<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">👤</div><p>Aggiungi un allievo per iniziare la valutazione</p></div>';
-  }
+  document.getElementById('allievi-tabs').innerHTML=allievi.map(a=>'<div class="allievo-tab '+(a.id===currentAllievo?'active':'')+'" onclick="selectAllievo('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'')+escH(a.nome)+'<button class="del-x" onclick="event.stopPropagation();eliminaAllievo('+a.id+')">x</button></div>').join('');
+  document.getElementById('allievi-tabs-op').innerHTML=allievi.map(a=>'<div class="allievo-tab '+(a.id===currentAllievoOp?'active':'')+'" onclick="selectAllievoOp('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'')+escH(a.nome)+'</div>').join('');
+  if(currentAllievo)renderAllievoContent();
+  else document.getElementById('allievo-content').innerHTML='<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#128100;</div><p>Aggiungi un allievo per iniziare</p></div>';
 }
+function selectAllievo(id){currentAllievo=id;renderAllievi();}
+function selectAllievoOp(id){currentAllievoOp=id;renderAllievoOp();}
 
-function selectAllievo(id){
-  currentAllievo = id;
-  renderAllievi();
-}
-
-// ── Aggiungi allievo ───────────────────────────────────────────────────────────
 async function aggiungiAllievo(){
-  const inp = document.getElementById('nuovo-allievo');
-  const nome = inp.value.trim();
-  if(!nome) return;
-  if(allievi.find(a=>a.nome===nome)){alert('Allievo già presente.');return;}
+  const inp=document.getElementById('nuovo-allievo');const nome=inp.value.trim();if(!nome)return;
+  if(allievi.find(a=>a.nome===nome)){alert('Allievo gia presente.');return;}
   try{
-    const res = await fetchAuth(`${API}/api/allievi/${session.turno}`, {
-      method:'POST', headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
-      body:JSON.stringify({corso:session.corso, nome})
-    });
-    if(!res) return;
-    const d = await res.json();
-    if(!res.ok){alert(d.error||'Errore');return;}
-    allievi.push({id:d.id, nome, foto_url:null, note:'', grades:{}});
-    currentAllievo = d.id;
-    inp.value='';
-    renderAllievi();
+    const res=await fetchAuth(API+'/api/allievi/'+session.turno,{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},body:JSON.stringify({corso:session.corso,nome})});
+    if(!res)return;const d=await res.json();if(!res.ok){alert(d.error||'Errore');return;}
+    allievi.push({id:d.id,nome,foto_url:null,note:'',grades:{},op_grades:{}});
+    currentAllievo=d.id;if(!currentAllievoOp)currentAllievoOp=d.id;
+    inp.value='';renderAllievi();
   }catch(e){alert('Errore: '+e.message);}
 }
-
 async function eliminaAllievo(id){
-  const a = allievi.find(x=>x.id===id);
-  if(!confirm(`Rimuovere ${a?.nome}?`)) return;
+  const a=allievi.find(x=>x.id===id);if(!confirm('Rimuovere '+a.nome+'?'))return;
   try{
-    const res = await fetchAuth(`${API}/api/allievi/${id}`, {
-      method:'DELETE', headers:{'X-Auth-Token':session.token}
-    });
-    if(!res) return;
-    allievi = allievi.filter(x=>x.id!==id);
-    if(currentAllievo===id) currentAllievo = allievi.length ? allievi[0].id : null;
-    renderAllievi();
+    const res=await fetchAuth(API+'/api/allievi/'+id,{method:'DELETE',headers:{'X-Auth-Token':session.token}});
+    if(!res)return;allievi=allievi.filter(x=>x.id!==id);
+    if(currentAllievo===id)currentAllievo=allievi.length?allievi[0].id:null;
+    if(currentAllievoOp===id)currentAllievoOp=allievi.length?allievi[0].id:null;
+    renderAllievi();renderAllievoOp();
   }catch(e){alert('Errore: '+e.message);}
 }
 
-// ── Render contenuto allievo ───────────────────────────────────────────────────
 function renderAllievoContent(){
-  const a = allievi.find(x=>x.id===currentAllievo);
-  if(!a){ document.getElementById('allievo-content').innerHTML=''; return; }
-  const schema = SCHEMAS[session.corso] || [];
-  const soglia = SOGLIE[session.corso];
-  const hasSogliaPromo = session.corso==='Istruttori1' || session.corso==='IstruttoriC3';
-
-  // Foto
-  const fotoHtml = `
-    <div class="foto-box">
-      <div class="foto-circle" id="foto-circle-${a.id}" onclick="apriUploadFoto(${a.id})">
-        ${a.foto_url ? `<img src="${a.foto_url}?t=${Date.now()}" alt="">` : '👤'}
-      </div>
-      <div class="foto-info">
-        <strong>${escH(a.nome)}</strong>
-        ${CORSI_LABEL[session.corso]||session.corso} — Turno ${session.turno}
-      </div>
-      <label class="foto-label" for="foto-input" onclick="apriUploadFoto(${a.id})" style="cursor:pointer;">📷 Foto</label>
-    </div>`;
-
-  // Note
-  const noteHtml = `
-    <div class="note-box">
-      <label>📝 Blocco Note – ${escH(a.nome)}</label>
-      <textarea id="note-${a.id}" placeholder="Annotazioni, osservazioni, punti di forza e di debolezza…"
-        onchange="salvaNote(${a.id},this.value)">${escH(a.note||'')}</textarea>
-    </div>`;
-
-  // Avviso non promosso
-  const warnHtml = hasSogliaPromo ?
-    `<div class="np-warn" id="np-warn-${a.id}">⚠️ ALLIEVO NON PROMOSSO – le sezioni 1 e 2 sono entrambe insufficienti</div>` : '';
-
-  // Tabella valutazione
-  let rows = '';
-  schema.forEach((sec, si) => {
-    rows += `<tr class="macro-row"><td colspan="3"><strong>${sec.macro}</strong></td></tr>`;
-    sec.items.forEach((item, ci) => {
-      const vkey = `v_${si}_${ci}`;
-      const val = a.grades[vkey] || '';
-      const vc = VOTO_CLASS[val] || '';
-      rows += `<tr>
-        <td style="font-size:.8rem;color:#444;line-height:1.5;max-width:420px;">${item.desc}</td>
-        <td style="text-align:center;"><span class="peso-badge">Peso ${item.peso}</span></td>
-        <td>
-          <select class="voto-sel ${vc}" id="sel-${a.id}-${vkey}"
-            onchange="setGrade(${a.id},'${vkey}',this.value)">
-            ${VOTI.map(v=>`<option value="${v}" ${v===val?'selected':''}>${v||'— scegli —'}</option>`).join('')}
-          </select>
-        </td>
-      </tr>`;
+  const a=allievi.find(x=>x.id===currentAllievo);if(!a){document.getElementById('allievo-content').innerHTML='';return;}
+  const schema=SCHEMAS[session.corso]||[];const soglia=SOGLIE[session.corso];const hasSoglia=soglia!==null;
+  let html='<div class="foto-box"><div class="foto-circle" id="foto-circle-'+a.id+'" onclick="apriUploadFoto('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'&#128100;')+'</div><div class="foto-info"><strong>'+escH(a.nome)+'</strong>'+(CORSI_LABEL[session.corso]||session.corso)+' &mdash; Turno '+session.turno+'</div><span class="foto-label" onclick="apriUploadFoto('+a.id+')">&#128247; Foto</span></div>';
+  html+='<div class="note-box"><label>&#128221; Blocco Note &mdash; '+escH(a.nome)+'</label><textarea id="note-'+a.id+'" placeholder="Annotazioni, osservazioni, punti di forza e di debolezza..." onchange="salvaNote('+a.id+',this.value)">'+escH(a.note||'')+'</textarea></div>';
+  if(hasSoglia)html+='<div class="np-warn" id="np-warn-'+a.id+'">&#9888; ALLIEVO NON PROMOSSO &mdash; le sezioni 1 e 2 sono entrambe insufficienti</div>';
+  let rows='';
+  schema.forEach(function(sec,si){
+    rows+='<tr class="macro-row"><td colspan="3"><strong>'+sec.macro+'</strong></td></tr>';
+    sec.items.forEach(function(item,ci){
+      const vkey='v_'+si+'_'+ci;const val=a.grades[vkey]||'';
+      rows+='<tr><td style="font-size:.8rem;color:#444;line-height:1.5;max-width:420px;">'+item.desc+'</td><td style="text-align:center;"><span class="peso-badge">Peso '+item.peso+'</span></td><td><select class="voto-sel '+(VOTO_CLASS[val]||'')+'" id="sel-'+a.id+'-'+vkey+'" onchange="setGrade('+a.id+',\''+vkey+'\',this.value)">'+VOTI.map(function(v){return'<option value="'+v+'"'+(v===val?' selected':'')+'>'+( v||'- scegli -')+'</option>';}).join('')+'</select></td></tr>';
     });
-    const {total,max} = calcSectionScore(schema, si, a.grades);
-    const sem = getSem(total, max);
-    rows += `<tr class="semaforo-row">
-      <td colspan="2">🚦 Semaforo — <em>${sec.macro}</em></td>
-      <td id="sem-${a.id}-${si}">${semBadge(sem)}</td>
-    </tr>`;
+    const media=calcSectionMedia(schema,si,a.grades);
+    rows+='<tr class="semaforo-row"><td colspan="2">&#128992; Semaforo &mdash; <em>'+sec.macro+'</em></td><td id="sem-'+a.id+'-'+si+'">'+semBadge(getSem(media))+'</td></tr>';
   });
-
-  const tot = calcTotal(schema, a.grades);
-  const passClass = soglia ? (tot>=soglia?'pass':'fail') : '';
-  const passLbl = soglia ? (tot>=soglia?'✅ Promosso':'❌ Non Promosso') : 'punti';
-  rows += `<tr class="total-row">
-    <td colspan="2">Totale complessivo valutazione allievo</td>
-    <td><div class="score-box ${passClass}" id="score-${a.id}">
-      <span class="sval">${tot}</span>
-      <span class="slbl">${passLbl}${soglia?` (soglia ${soglia})`:'totale'}</span>
-    </div></td>
-  </tr>`;
-
-  const tableHtml = `<div style="overflow-x:auto;">
-    <table class="eval-table">
-      <thead><tr>
-        <th>Criterio di Valutazione</th>
-        <th class="center" style="width:80px">Peso</th>
-        <th style="width:155px">Valutazione</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>`;
-
-  document.getElementById('allievo-content').innerHTML = fotoHtml + noteHtml + warnHtml + tableHtml;
+  const tot=calcTotal(schema,a.grades);const passClass=soglia?(tot>=soglia?'pass':'fail'):'';const passLbl=soglia?(tot>=soglia?'&#10003; Promosso':'&#10007; Non Promosso'):'punti';
+  rows+='<tr class="total-row"><td colspan="2">Totale complessivo valutazione allievo</td><td><div class="score-box '+passClass+'" id="score-'+a.id+'"><span class="sval">'+tot+'</span><span class="slbl">'+passLbl+(soglia?' (min. '+soglia+')':'totale')+'</span></div></td></tr>';
+  html+='<div style="overflow-x:auto;"><table class="eval-table"><thead><tr><th>Criterio di Valutazione</th><th class="center" style="width:80px">Peso</th><th style="width:155px">Valutazione</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  document.getElementById('allievo-content').innerHTML=html;
   checkNpWarn(a);
 }
 
-// ── Grade logic ────────────────────────────────────────────────────────────────
-function setGrade(aid, vkey, value){
-  const a = allievi.find(x=>x.id===aid);
-  if(!a) return;
-  if(!a.grades) a.grades = {};
-  a.grades[vkey] = value;
-  updateSelColor(aid, vkey, value);
-  updateSemAndScore(a);
-  autoSave(aid, {[vkey]: value});
+function setGrade(aid,vkey,value){
+  const a=allievi.find(x=>x.id===aid);if(!a)return;if(!a.grades)a.grades={};a.grades[vkey]=value;
+  const sel=document.getElementById('sel-'+aid+'-'+vkey);if(sel)sel.className='voto-sel '+(VOTO_CLASS[value]||'');
+  updateSemAndScore(a);autoSave(aid,'val',Object.fromEntries([[vkey,value]]));
 }
-
-function updateSelColor(aid, vkey, value){
-  const sel = document.getElementById(`sel-${aid}-${vkey}`);
-  if(sel) sel.className = 'voto-sel ' + (VOTO_CLASS[value]||'');
-}
-
 function updateSemAndScore(a){
-  const schema = SCHEMAS[session.corso] || [];
-  const soglia = SOGLIE[session.corso];
-  schema.forEach((sec, si) => {
-    const {total,max} = calcSectionScore(schema, si, a.grades);
-    const semEl = document.getElementById(`sem-${a.id}-${si}`);
-    if(semEl) semEl.innerHTML = semBadge(getSem(total, max));
-  });
-  const tot = calcTotal(schema, a.grades);
-  const scoreEl = document.getElementById(`score-${a.id}`);
-  if(scoreEl){
-    const passClass = soglia ? (tot>=soglia?'pass':'fail') : '';
-    const passLbl = soglia ? (tot>=soglia?'✅ Promosso':'❌ Non Promosso') : 'punti';
-    scoreEl.className = 'score-box ' + passClass;
-    scoreEl.querySelector('.sval').textContent = tot;
-    scoreEl.querySelector('.slbl').textContent = passLbl + (soglia?` (soglia ${soglia})`:'totale');
-  }
+  const schema=SCHEMAS[session.corso]||[];const soglia=SOGLIE[session.corso];
+  schema.forEach(function(_,si){const media=calcSectionMedia(schema,si,a.grades);const el=document.getElementById('sem-'+a.id+'-'+si);if(el)el.innerHTML=semBadge(getSem(media));});
+  const tot=calcTotal(schema,a.grades);const el=document.getElementById('score-'+a.id);
+  if(el){const passClass=soglia?(tot>=soglia?'pass':'fail'):'';const passLbl=soglia?(tot>=soglia?'&#10003; Promosso':'&#10007; Non Promosso'):'punti';el.className='score-box '+passClass;el.querySelector('.sval').textContent=tot;el.querySelector('.slbl').innerHTML=passLbl+(soglia?' (min. '+soglia+')':'totale');}
   checkNpWarn(a);
 }
-
 function checkNpWarn(a){
-  const el = document.getElementById(`np-warn-${a.id}`);
-  if(!el) return;
-  const schema = SCHEMAS[session.corso] || [];
-  const s0 = getSem(calcSectionScore(schema,0,a.grades).total, calcSectionScore(schema,0,a.grades).max);
-  const s1 = getSem(calcSectionScore(schema,1,a.grades).total, calcSectionScore(schema,1,a.grades).max);
-  const bad = s => s==='r' || s==='g';
-  el.classList.toggle('show', bad(s0) && bad(s1));
+  const el=document.getElementById('np-warn-'+a.id);if(!el)return;
+  const schema=SCHEMAS[session.corso]||[];
+  const m0=calcSectionMedia(schema,0,a.grades);const m1=calcSectionMedia(schema,1,a.grades);
+  const bad=function(m){return getSem(m)!=='v';};
+  el.classList.toggle('show',bad(m0)&&bad(m1));
 }
 
-function calcSectionScore(schema, si, grades){
-  const sec = schema[si];
-  let total=0, max=0;
-  sec.items.forEach((item,ci) => {
-    const key = `v_${si}_${ci}`;
-    const voto = (grades[key]||'').trim();
-    total += (PESI_VOTI[voto]||0) * item.peso;
-    max += 4 * item.peso;
-  });
-  return {total, max};
-}
-
-function calcTotal(schema, grades){
-  let t=0;
-  schema.forEach((sec,si) => {
-    sec.items.forEach((item,ci) => {
-      const key = `v_${si}_${ci}`;
-      const voto = (grades[key]||'').trim();
-      t += (PESI_VOTI[voto]||0) * item.peso;
+function renderAllievoOp(){
+  const a=allievi.find(x=>x.id===currentAllievoOp);
+  if(!a){document.getElementById('allievo-op-content').innerHTML='<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#128100;</div><p>Nessun allievo selezionato</p></div>';return;}
+  const opSchema=OP_SCHEMAS[session.corso]||[];if(!a.op_grades)a.op_grades={};
+  let html='<div class="foto-box"><div class="foto-circle" id="foto-circle-op-'+a.id+'" onclick="apriUploadFoto('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'&#128100;')+'</div><div class="foto-info"><strong>'+escH(a.nome)+'</strong>Scheda Operativa &mdash; '+(CORSI_LABEL[session.corso]||session.corso)+'</div><span class="foto-label" onclick="apriUploadFoto('+a.id+')">&#128247; Foto</span></div>';
+  html+='<div class="note-box"><label>&#128221; Note Operative &mdash; '+escH(a.nome)+'</label><textarea id="note-op-'+a.id+'" placeholder="Annotazioni sugli obiettivi operativi..." onchange="salvaNote('+a.id+',this.value)">'+escH(a.note||'')+'</textarea></div>';
+  let rows='';
+  opSchema.forEach(function(sec,si){
+    rows+='<tr class="op-macro"><td colspan="2"><strong>'+sec.macro+'</strong></td></tr>';
+    sec.items.forEach(function(item,ci){
+      const vkey='op_'+si+'_'+ci;const val=a.op_grades[vkey]||'';
+      rows+='<tr><td style="font-size:.82rem;color:#444;">'+item+'</td><td style="width:155px;"><select class="voto-sel '+(VOTO_CLASS[val]||'')+'" id="opsel-'+a.id+'-'+vkey+'" onchange="setOpGrade('+a.id+',\''+vkey+'\',this.value)">'+VOTI.map(function(v){return'<option value="'+v+'"'+(v===val?' selected':'')+'>'+( v||'- scegli -')+'</option>';}).join('')+'</select></td></tr>';
     });
   });
-  return t;
+  html+='<div style="overflow-x:auto;"><table class="op-table"><thead><tr><th>Obiettivo Operativo</th><th style="width:155px">Valutazione</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  html+='<div class="btn-row"><button class="btn btn-outline btn-sm" onclick="esportaCSV(\'op\')">CSV Operativo</button></div>';
+  document.getElementById('allievo-op-content').innerHTML=html;
+}
+function setOpGrade(aid,vkey,value){
+  const a=allievi.find(x=>x.id===aid);if(!a)return;if(!a.op_grades)a.op_grades={};a.op_grades[vkey]=value;
+  const sel=document.getElementById('opsel-'+aid+'-'+vkey);if(sel)sel.className='voto-sel '+(VOTO_CLASS[value]||'');
+  autoSave(aid,'op',Object.fromEntries([[vkey,value]]));
 }
 
-function getSem(total, max){
-  if(max===0) return '0';
-  const p = total/max;
-  if(p<=0) return 'r'; // tutto non raggiunto
-  if(p<0.5) return 'r';
-  if(p<0.75) return 'g';
-  return 'v';
+// CALCOLI SEMAFORO CORRETTI
+// Basati sulla media ponderata: somma(voto*peso) / somma(pesi)
+// VERDE: media >= 2 (Sufficiente)
+// GIALLO: 1 <= media < 2 (Da Affinare)
+// ROSSO: media < 1 (Non Raggiunto)
+function calcSectionMedia(schema,si,grades){
+  const sec=schema[si];let totPond=0,sumPesi=0;
+  sec.items.forEach(function(item,ci){const voto=((grades['v_'+si+'_'+ci])||'').trim();totPond+=(PESI_VOTI[voto]||0)*item.peso;sumPesi+=item.peso;});
+  return sumPesi>0?totPond/sumPesi:0;
 }
-
+function calcTotal(schema,grades){
+  let t=0;schema.forEach(function(sec,si){sec.items.forEach(function(item,ci){const voto=((grades['v_'+si+'_'+ci])||'').trim();t+=(PESI_VOTI[voto]||0)*item.peso;});});return t;
+}
+function getSem(media){if(media>=2)return'v';if(media>=1)return'g';return'r';}
 function semBadge(s){
-  if(s==='v') return '<span class="sem-badge sem-v">🟢 Verde</span>';
-  if(s==='g') return '<span class="sem-badge sem-g">🟡 Giallo</span>';
-  if(s==='r') return '<span class="sem-badge sem-r">🔴 Rosso</span>';
-  return '<span class="sem-badge sem-0">⚪ –</span>';
+  if(s==='v')return'<span class="sem-badge sem-v">&#128994; Verde - Sufficiente o superiore</span>';
+  if(s==='g')return'<span class="sem-badge sem-g">&#128993; Giallo - Da Affinare</span>';
+  return'<span class="sem-badge sem-r">&#128308; Rosso - Non Raggiunto</span>';
 }
 
-// ── Auto-save valutazioni ──────────────────────────────────────────────────────
-let saveTimers = {};
-function autoSave(aid, grades){
-  clearTimeout(saveTimers[aid]);
-  saveTimers[aid] = setTimeout(async () => {
-    try{
-      await fetchAuth(`${API}/api/valutazioni/${aid}`, {
-        method:'PUT', headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
-        body:JSON.stringify({grades})
-      });
-      showToast();
-    }catch{}
-  }, 800);
+let saveTimers={};
+function autoSave(aid,tipo,grades){
+  const key=aid+'_'+tipo;clearTimeout(saveTimers[key]);
+  saveTimers[key]=setTimeout(async function(){
+    try{const url=tipo==='val'?API+'/api/valutazioni/'+aid:API+'/api/valutazioni-op/'+aid;await fetchAuth(url,{method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},body:JSON.stringify({grades})});showToast();}catch{}
+  },800);
+}
+function showToast(){const t=document.getElementById('save-toast');t.classList.add('show');clearTimeout(t._timer);t._timer=setTimeout(function(){t.classList.remove('show');},1800);}
+let noteTimers={};
+function salvaNote(aid,value){
+  const a=allievi.find(x=>x.id===aid);if(a)a.note=value;clearTimeout(noteTimers[aid]);
+  noteTimers[aid]=setTimeout(async function(){try{await fetchAuth(API+'/api/allievi/'+aid+'/note',{method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},body:JSON.stringify({note:value})});showToast();}catch{}},1000);
 }
 
-function showToast(){
-  const t = document.getElementById('save-toast');
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(()=>t.classList.remove('show'), 1800);
-}
-
-// ── Note ──────────────────────────────────────────────────────────────────────
-let noteTimers = {};
-function salvaNote(aid, value){
-  const a = allievi.find(x=>x.id===aid);
-  if(a) a.note = value;
-  clearTimeout(noteTimers[aid]);
-  noteTimers[aid] = setTimeout(async () => {
-    try{
-      await fetchAuth(`${API}/api/allievi/${aid}/note`, {
-        method:'PUT', headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
-        body:JSON.stringify({note:value})
-      });
-      showToast();
-    }catch{}
-  }, 1000);
-}
-
-// ── Foto ──────────────────────────────────────────────────────────────────────
-function apriUploadFoto(id){
-  if(!session?.fotoAbilitata){
-    alert('Il caricamento foto non è abilitato per questo accesso.\nUsa la password speciale foto per abilitarlo.');
-    return;
-  }
-  fotoUploadId = id;
-  document.getElementById('foto-input').click();
-}
-
+function apriUploadFoto(id){if(!session.fotoAbilitata){alert('Caricamento foto non abilitato.\nUsa la password speciale foto.');return;}fotoUploadId=id;document.getElementById('foto-input').click();}
 async function uploadFoto(input){
-  const file = input.files[0]; if(!file) return;
-  const id = fotoUploadId;
-  if(!id || !session){ input.value=''; return; }
-  const formData = new FormData();
-  formData.append('foto', file);
+  const file=input.files[0];if(!file)return;const id=fotoUploadId;if(!id||!session){input.value='';return;}
+  const formData=new FormData();formData.append('foto',file);
   try{
-    const res = await fetch(`${API}/api/foto/${id}`, {
-      method:'POST', headers:{'X-Auth-Token':session.token}, body:formData
-    });
-    const d = await res.json();
-    if(!res.ok) throw new Error(d.error||'Errore upload');
-    const a = allievi.find(x=>x.id===id);
-    if(a){ a.foto_url = d.foto_url; }
-    const circle = document.getElementById(`foto-circle-${id}`);
-    if(circle) circle.innerHTML = `<img src="${d.foto_url}?t=${Date.now()}" alt="">`;
-    // Aggiorna tab
-    renderAllievi();
-  }catch(e){ alert('Errore upload foto: '+e.message); }
+    const res=await fetch(API+'/api/foto/'+id,{method:'POST',headers:{'X-Auth-Token':session.token},body:formData});
+    const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore upload');
+    const a=allievi.find(x=>x.id===id);if(a)a.foto_url=d.foto_url;
+    ['foto-circle-'+id,'foto-circle-op-'+id].forEach(function(cid){const el=document.getElementById(cid);if(el)el.innerHTML='<img src="'+d.foto_url+'?t='+Date.now()+'" alt="">';});
+    renderAllievi();renderAllievoOp();
+  }catch(e){alert('Errore upload foto: '+e.message);}
   input.value='';
 }
 
-// ── Esporta CSV (turno) ────────────────────────────────────────────────────────
-function esportaCSV(){
+function esportaCSV(tipo){
   if(!allievi.length){alert('Nessun allievo da esportare.');return;}
-  const schema = SCHEMAS[session.corso]||[];
-  let csv='\uFEFFAllievo,Sezione,Criterio,Peso,Voto,Totale\n';
-  allievi.forEach(a=>{
-    const tot = calcTotal(schema, a.grades||{});
-    schema.forEach((sec,si)=>{
-      sec.items.forEach((item,ci)=>{
-        const voto = (a.grades||{})[`v_${si}_${ci}`]||'';
-        csv+=`"${a.nome}","${sec.macro}","${item.desc.replace(/"/g,'""')}",${item.peso},"${voto}",${tot}\n`;
-      });
-    });
-  });
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const link=document.createElement('a');
-  link.href=url; link.download=`CVC_T${session.turno}_${session.corso}_${new Date().toISOString().slice(0,10)}.csv`;
-  link.click(); URL.revokeObjectURL(url);
-}
-
-// ── Navigazione ────────────────────────────────────────────────────────────────
-function showPage(name, btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
-  if(name==='admin') showAdminSection();
-}
-
-// ── Admin ──────────────────────────────────────────────────────────────────────
-async function showAdminSection(){
-  if(adminToken){
-    const ok=(await fetch(`${API}/api/stats`,{headers:{'X-Admin-Token':adminToken}})).ok;
-    if(!ok) adminToken=null;
+  let csv='\uFEFF';
+  if(tipo==='val'){
+    const schema=SCHEMAS[session.corso]||[];csv+='Allievo,Sezione,Criterio,Peso,Voto,Totale\n';
+    allievi.forEach(function(a){const tot=calcTotal(schema,a.grades||{});schema.forEach(function(sec,si){sec.items.forEach(function(item,ci){const voto=(a.grades||{})['v_'+si+'_'+ci]||'';csv+='"'+a.nome+'","'+sec.macro+'","'+item.desc.replace(/"/g,'""')+'",'+item.peso+',"'+voto+'",'+tot+'\n';});});});
+  }else{
+    const opSchema=OP_SCHEMAS[session.corso]||[];csv+='Allievo,Sezione,Obiettivo,Voto\n';
+    allievi.forEach(function(a){opSchema.forEach(function(sec,si){sec.items.forEach(function(item,ci){const voto=(a.op_grades||{})['op_'+si+'_'+ci]||'';csv+='"'+a.nome+'","'+sec.macro+'","'+item.replace(/"/g,'""')+'","'+voto+'"\n';});});});
   }
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download='CVC_T'+session.turno+'_'+session.corso+'_'+tipo+'_'+new Date().toISOString().slice(0,10)+'.csv';link.click();URL.revokeObjectURL(url);
+}
+
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('nav button').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(name==='operativo')renderAllievoOp();
+  if(name==='admin')showAdminSection();
+}
+
+async function showAdminSection(){
+  if(adminToken){const ok=(await fetch(API+'/api/stats',{headers:{'X-Admin-Token':adminToken}})).ok;if(!ok)adminToken=null;}
   document.getElementById('admin-gate').style.display=adminToken?'none':'block';
   document.getElementById('admin-panel').style.display=adminToken?'block':'none';
   if(adminToken){loadStats();loadRiepilogo();}
 }
-
 async function doAdminLogin(){
-  document.getElementById('admin-err').style.display='none';
-  const pwd=document.getElementById('admin-pwd').value;
-  try{
-    const res=await fetch(`${API}/api/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
-    const d=await res.json(); if(!res.ok) throw new Error();
-    adminToken=d.token;
-    document.getElementById('admin-gate').style.display='none';
-    document.getElementById('admin-panel').style.display='block';
-    loadStats(); loadRiepilogo();
-  }catch{document.getElementById('admin-err').style.display='block';}
+  document.getElementById('admin-err').style.display='none';const pwd=document.getElementById('admin-pwd').value;
+  try{const res=await fetch(API+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});const d=await res.json();if(!res.ok)throw new Error();adminToken=d.token;document.getElementById('admin-gate').style.display='none';document.getElementById('admin-panel').style.display='block';loadStats();loadRiepilogo();}catch{document.getElementById('admin-err').style.display='block';}
 }
-
-function adminLogout(){
-  adminToken=null;
-  document.getElementById('admin-gate').style.display='block';
-  document.getElementById('admin-panel').style.display='none';
-  document.getElementById('admin-pwd').value='';
-}
-
+function adminLogout(){adminToken=null;document.getElementById('admin-gate').style.display='block';document.getElementById('admin-panel').style.display='none';document.getElementById('admin-pwd').value='';}
 async function loadStats(){
-  if(!adminToken) return;
+  if(!adminToken)return;
   try{
-    const res=await fetch(`${API}/api/stats`,{headers:{'X-Admin-Token':adminToken}});
-    if(!res.ok){adminToken=null;return;}
-    const d=await res.json();
-    document.getElementById('stats-grid').innerHTML=`
-      <div class="stat"><div class="n">${d.totale_allievi}</div><div class="l">Allievi totali</div></div>
-      <div class="stat"><div class="n">${d.n_turni}</div><div class="l">Turni attivi</div></div>
-      <div class="stat"><div class="n">${d.n_istruttori}</div><div class="l">Capi Turno</div></div>`;
-    document.getElementById('turni-body').innerHTML=(d.turni||[]).map(t=>
-      `<tr><td><strong>T${t.numero}</strong></td><td><span class="tag">${CORSI_LABEL[t.corso]||t.corso}</span></td>
-       <td>${t.capoturno}</td><td style="font-size:.78rem">${t.email||'—'}</td>
-       <td><span class="pwd-cell">${t.pwd_plain}</span></td>
-       <td style="text-align:center">${t.n_allievi}</td>
-       <td><button class="btn btn-danger btn-sm" onclick="cancellaTurno(${t.numero},'${t.corso}')">🗑️</button></td></tr>`
-    ).join('')||'<tr><td colspan="7" class="empty">Nessun turno.</td></tr>';
+    const res=await fetch(API+'/api/stats',{headers:{'X-Admin-Token':adminToken}});if(!res.ok){adminToken=null;return;}const d=await res.json();
+    document.getElementById('stats-grid').innerHTML='<div class="stat"><div class="n">'+d.totale_allievi+'</div><div class="l">Allievi totali</div></div><div class="stat"><div class="n">'+d.n_turni+'</div><div class="l">Turni attivi</div></div><div class="stat"><div class="n">'+d.n_istruttori+'</div><div class="l">Capi Turno</div></div>';
+    document.getElementById('turni-body').innerHTML=(d.turni||[]).map(function(t){return'<tr><td><strong>T'+t.numero+'</strong></td><td><span class="tag">'+(CORSI_LABEL[t.corso]||t.corso)+'</span></td><td>'+t.capoturno+'</td><td style="font-size:.78rem">'+(t.email||'-')+'</td><td><span class="pwd-cell">'+t.pwd_plain+'</span></td><td style="text-align:center">'+t.n_allievi+'</td><td><button class="btn btn-danger btn-sm" onclick="cancellaTurno('+t.numero+',\''+t.corso+'\')">&#128465;</button></td></tr>';}).join('')||'<tr><td colspan="7" class="empty">Nessun turno.</td></tr>';
   }catch{}
 }
-
 async function loadRiepilogo(){
-  if(!adminToken) return;
-  const q=document.getElementById('f-q').value;
-  const corso=document.getElementById('f-corso').value;
-  const turno=document.getElementById('f-turno').value;
-  let url=`${API}/api/valutazioni/all?limit=500`;
-  if(q) url+=`&q=${encodeURIComponent(q)}`;
-  if(corso) url+=`&corso=${encodeURIComponent(corso)}`;
-  if(turno) url+=`&turno=${encodeURIComponent(turno)}`;
-  document.getElementById('tab-spinner').style.display='block';
-  document.getElementById('tab-body').innerHTML='';
+  if(!adminToken)return;
+  const q=document.getElementById('f-q').value,corso=document.getElementById('f-corso').value,turno=document.getElementById('f-turno').value;
+  let url=API+'/api/valutazioni/all?';if(q)url+='&q='+encodeURIComponent(q);if(corso)url+='&corso='+encodeURIComponent(corso);if(turno)url+='&turno='+encodeURIComponent(turno);
+  document.getElementById('tab-spinner').style.display='block';document.getElementById('tab-body').innerHTML='';
   try{
-    const res=await fetch(url,{headers:{'X-Admin-Token':adminToken}});
-    const data=await res.json();
-    document.getElementById('count-badge').textContent=data.total||0;
-    const rows=data.rows||[];
-    if(!rows.length){document.getElementById('tab-body').innerHTML='<tr><td colspan="6" class="empty">📭 Nessun risultato.</td></tr>';return;}
-    const soglie={ADV:null,Istruttori1:66,IstruttoriC3:66};
-    document.getElementById('tab-body').innerHTML=rows.map(r=>{
-      const s=soglie[r.corso];
-      const pass=s?r.totale>=s:null;
-      const esito=s?(pass?'<span style="color:var(--verde);font-weight:bold;">✅ Promosso</span>':'<span style="color:var(--rosso);font-weight:bold;">❌ Non Promosso</span>'):'-';
-      return `<tr>
-        <td><strong>T${r.turno}</strong></td>
-        <td><span class="tag">${CORSI_LABEL[r.corso]||r.corso}</span></td>
-        <td>${r.capoturno||'-'}</td>
-        <td><strong>${r.nome}</strong>${r.foto_url?` <img src="${r.foto_url}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;" alt="">`:''}
-        </td>
-        <td><span class="score">${r.totale}</span></td>
-        <td>${esito}</td>
-      </tr>`;
-    }).join('');
+    const res=await fetch(url,{headers:{'X-Admin-Token':adminToken}});const data=await res.json();
+    document.getElementById('count-badge').textContent=data.total||0;const rows=data.rows||[];
+    if(!rows.length){document.getElementById('tab-body').innerHTML='<tr><td colspan="6" class="empty">Nessun risultato.</td></tr>';return;}
+    document.getElementById('tab-body').innerHTML=rows.map(function(r){const s=SOGLIE[r.corso];const pass=s?r.totale>=s:null;const esito=s?(pass?'<span style="color:var(--verde);font-weight:bold;">Promosso</span>':'<span style="color:var(--rosso);font-weight:bold;">Non Promosso</span>'):'-';return'<tr><td><strong>T'+r.turno+'</strong></td><td><span class="tag">'+(CORSI_LABEL[r.corso]||r.corso)+'</span></td><td>'+(r.capoturno||'-')+'</td><td><strong>'+r.nome+'</strong>'+(r.foto_url?'<img src="'+r.foto_url+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;" alt="">':'')+'</td><td><span class="score">'+r.totale+'</span></td><td>'+esito+'</td></tr>';}).join('');
   }catch{document.getElementById('tab-body').innerHTML='<tr><td colspan="6" class="empty">Errore.</td></tr>';}
   finally{document.getElementById('tab-spinner').style.display='none';}
 }
-
-async function cancellaTurno(numero, corso){
-  if(!adminToken){alert('Accedi come admin.');return;}
-  if(!confirm(`⚠️ Cancellare il Turno ${numero} - ${CORSI_LABEL[corso]||corso}?\nVerranno eliminati tutti gli allievi e le valutazioni.`)) return;
-  try{
-    const res=await fetch(`${API}/api/turno/${numero}?corso=${encodeURIComponent(corso)}`,{
-      method:'DELETE',headers:{'X-Admin-Token':adminToken}
-    });
-    const d=await res.json();
-    if(!res.ok) throw new Error(d.error||'Errore');
-    alert(`✅ Turno ${numero} eliminato (${d.allievi} allievi rimossi).`);
-    loadStats(); loadRiepilogo();
-  }catch(e){alert('Errore: '+e.message);}
-}
-
-async function adminExportCSV(){
-  if(!adminToken){alert('Accedi come admin.');return;}
-  try{
-    const res=await fetch(`${API}/api/export/csv`,{headers:{'X-Admin-Token':adminToken}});
-    if(!res.ok) throw new Error('Nessun dato');
-    const blob=await res.blob();
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-    a.download='CVC_Istruttori_valutazioni.csv';a.click();URL.revokeObjectURL(a.href);
-  }catch(e){alert(e.message);}
-}
-
-async function backupDB(){
-  if(!adminToken){alert('Accedi come admin.');return;}
-  const res=await fetch(`${API}/api/backup`,{headers:{'X-Admin-Token':adminToken}});
-  if(!res.ok){alert('Errore backup');return;}
-  const blob=await res.blob();
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`CVC_backup_${new Date().toISOString().slice(0,10)}.json`;a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-async function cancellaFoto(){
-  if(!adminToken){alert('Accedi come admin.');return;}
-  if(!confirm('Cancellare TUTTE le foto di tutti gli allievi?')) return;
-  try{
-    const res=await fetch(`${API}/api/foto/all`,{method:'DELETE',headers:{'X-Admin-Token':adminToken}});
-    const d=await res.json();
-    if(!res.ok) throw new Error(d.error||'Errore');
-    alert(`✅ Cancellate ${d.cancellate} foto.`);
-  }catch(e){alert('Errore: '+e.message);}
-}
-
-async function resetDB(){
-  if(!adminToken){alert('Accedi come admin.');return;}
-  if(!confirm('⚠️ ATTENZIONE\n\nQuesto cancellerà TUTTI i dati:\n- Tutti i turni e password\n- Tutti gli allievi e le valutazioni\n- Tutte le sessioni attive\n\nSei sicuro?')) return;
-  if(!confirm('Conferma definitiva: cancellare tutto?')) return;
-  try{
-    const res=await fetch(`${API}/api/reset`,{method:'POST',headers:{'X-Admin-Token':adminToken}});
-    if(!res.ok) throw new Error('Errore');
-    adminToken=null; sessionStorage.clear();
-    alert('✅ Database resettato.');
-    adminLogout();
-  }catch(e){alert('Errore: '+e.message);}
-}
-
-async function restoreDB(input){
-  if(!adminToken){alert('Accedi come admin.');return;}
-  const file=input.files[0]; if(!file) return;
-  if(!confirm('⚠️ Il Restore sovrascriverà TUTTI i dati attuali. Sei sicuro?')){input.value='';return;}
-  const formData=new FormData(); formData.append('file',file);
-  try{
-    const res=await fetch(`${API}/api/restore`,{
-      method:'POST',headers:{'X-Admin-Token':adminToken},body:formData
-    });
-    const d=await res.json();
-    if(!res.ok) throw new Error(d.error||'Errore restore');
-    alert(`✅ Restore completato!\nTurni: ${d.turni}\nAllievi: ${d.allievi}`);
-    loadStats(); loadRiepilogo();
-  }catch(e){alert('Errore restore: '+e.message);}
-  input.value='';
-}
-
-// ── Utils ──────────────────────────────────────────────────────────────────────
-function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
+async function cancellaTurno(numero,corso){if(!adminToken){alert('Accedi come admin.');return;}if(!confirm('Cancellare il Turno '+numero+' - '+(CORSI_LABEL[corso]||corso)+'?'))return;try{const res=await fetch(API+'/api/turno/'+numero+'?corso='+encodeURIComponent(corso),{method:'DELETE',headers:{'X-Admin-Token':adminToken}});const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore');alert('Turno '+numero+' eliminato ('+d.allievi+' allievi rimossi).');loadStats();loadRiepilogo();}catch(e){alert('Errore: '+e.message);}}
+async function adminExportCSV(){if(!adminToken){alert('Accedi come admin.');return;}try{const res=await fetch(API+'/api/export/csv',{headers:{'X-Admin-Token':adminToken}});if(!res.ok)throw new Error('Nessun dato');const blob=await res.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CVC_Istruttori_valutazioni.csv';a.click();URL.revokeObjectURL(a.href);}catch(e){alert(e.message);}}
+async function backupDB(){if(!adminToken){alert('Accedi come admin.');return;}const res=await fetch(API+'/api/backup',{headers:{'X-Admin-Token':adminToken}});if(!res.ok){alert('Errore backup');return;}const blob=await res.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CVC_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);}
+async function cancellaFoto(){if(!adminToken){alert('Accedi come admin.');return;}if(!confirm('Cancellare TUTTE le foto?'))return;try{const res=await fetch(API+'/api/foto/all',{method:'DELETE',headers:{'X-Admin-Token':adminToken}});const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore');alert('Cancellate '+d.cancellate+' foto.');}catch(e){alert('Errore: '+e.message);}}
+async function resetDB(){if(!adminToken){alert('Accedi come admin.');return;}if(!confirm('ATTENZIONE: cancellare TUTTI i dati?'))return;if(!confirm('Conferma definitiva?'))return;try{const res=await fetch(API+'/api/reset',{method:'POST',headers:{'X-Admin-Token':adminToken}});if(!res.ok)throw new Error('Errore');adminToken=null;sessionStorage.clear();alert('Database resettato.');adminLogout();}catch(e){alert('Errore: '+e.message);}}
+async function restoreDB(input){if(!adminToken){alert('Accedi come admin.');return;}const file=input.files[0];if(!file)return;if(!confirm('Il Restore sovrascrivera TUTTI i dati attuali. Sei sicuro?')){input.value='';return;}const formData=new FormData();formData.append('file',file);try{const res=await fetch(API+'/api/restore',{method:'POST',headers:{'X-Admin-Token':adminToken},body:formData});const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore restore');alert('Restore completato! Turni: '+d.turni+' Allievi: '+d.allievi);loadStats();loadRiepilogo();}catch(e){alert('Errore restore: '+e.message);}input.value='';}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 init();
 </script>
 </body>
