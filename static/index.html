@@ -784,13 +784,15 @@ function importaExcel(input){
         // Prende solo l'ultima parola = il nome
         // Se duplicato, aggiunge le prime 3 lettere del cognome (prima parola)
         var parti=v.split(/\s+/);
-        var nome=parti[parti.length-1];
-        if(!nome)continue;
-        if(nomiUsati[nome.toLowerCase()]){
-          var suffisso=parti[0].substring(0,3);
-          nome=nome+' '+suffisso;
+        var nomeBase=parti[parti.length-1];
+        if(!nomeBase)continue;
+        // Se duplicato aggiunge numero: matteo2, matteo3...
+        var nome=nomeBase;
+        var contatore=2;
+        while(nomiUsati[nome.toLowerCase()]){
+          nome=nomeBase+contatore;
+          contatore++;
         }
-        if(nomiUsati[nome.toLowerCase()]){saltati++;continue;}
         nomiUsati[nome.toLowerCase()]=true; // segna subito come usato
         aggiunti++;
         // Salva come funzione (non Promise) per esecuzione sequenziale
