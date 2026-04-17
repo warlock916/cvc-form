@@ -771,6 +771,12 @@ function importaExcel(input){
 
       var aggiunti=0,saltati=0;
       var promises=[];
+      // Set locale per tracciare i nomi già visti IN QUESTA importazione
+      // (allievi[] si aggiorna solo dopo la risposta del server, non in tempo reale)
+      var nomiUsati={};
+      // Pre-popola con i nomi già presenti
+      allievi.forEach(function(a){nomiUsati[a.nome.toLowerCase()]=true;});
+
       for(var i=headerRow+1;i<rows.length;i++){
         var v=String(rows[i][nameCol]||'').trim();
         if(!v||/^\d+$/.test(v))continue;
@@ -780,11 +786,12 @@ function importaExcel(input){
         var parti=v.split(/\s+/);
         var nome=parti[parti.length-1];
         if(!nome)continue;
-        if(allievi.find(function(a){return a.nome===nome;})){
+        if(nomiUsati[nome.toLowerCase()]){
           var suffisso=parti[0].substring(0,3);
           nome=nome+' '+suffisso;
         }
-        if(allievi.find(function(a){return a.nome===nome;})){saltati++;continue;}
+        if(nomiUsati[nome.toLowerCase()]){saltati++;continue;}
+        nomiUsati[nome.toLowerCase()]=true; // segna subito come usato
         aggiunti++;
         promises.push(aggiungiAllievoSilenzioso(nome));
       }
