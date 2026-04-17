@@ -792,13 +792,25 @@ function importaExcel(input){
 
       // Esegue le chiamate al server in sequenza usando i nomi gia calcolati
       (async function(){
+        // Mostra indicatore di caricamento
+        var toast=document.getElementById('save-toast');
+        toast.innerHTML='⏳ Importazione in corso... 0/'+nomiDaAggiungere.length;
+        toast.style.background='var(--arancio)';
+        toast.classList.add('show');
+
         var aggiunti=0;
         for(var i=0;i<nomiDaAggiungere.length;i++){
           await aggiungiAllievoSilenzioso(nomiDaAggiungere[i]);
           aggiunti++;
+          toast.innerHTML='⏳ Importazione in corso... '+aggiunti+'/'+nomiDaAggiungere.length;
         }
-        await caricaAllievi(); // ricarica tutto dal server per sicurezza
-        alert('Importati '+aggiunti+' allievi');
+        await caricaAllievi();
+
+        // Mostra conferma finale
+        toast.innerHTML='✅ Importati '+aggiunti+' allievi';
+        toast.style.background='var(--verde)';
+        clearTimeout(toast._timer);
+        toast._timer=setTimeout(function(){toast.classList.remove('show');toast.style.background='var(--verde)';toast.innerHTML='&#10003; Salvato';},3000);
       })();
 
     }catch(err){alert('Errore lettura file: '+err.message);}
