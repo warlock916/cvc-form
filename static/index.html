@@ -793,17 +793,21 @@ function importaExcel(input){
         if(nomiUsati[nome.toLowerCase()]){saltati++;continue;}
         nomiUsati[nome.toLowerCase()]=true; // segna subito come usato
         aggiunti++;
-        promises.push(aggiungiAllievoSilenzioso(nome));
+        // Salva come funzione (non Promise) per esecuzione sequenziale
+        var _nome=nome;
+        promises.push(function(){return aggiungiAllievoSilenzioso(_nome);});
       }
 
       if(!promises.length&&!saltati){alert('Nessun nome trovato nel file.');input.value='';return;}
 
-      Promise.all(promises).then(function(){
+      // Esegue in sequenza (non parallelo) cosi allievi[] e sempre aggiornato
+      (async function(){
+        for(var pi=0;pi<promises.length;pi++){await promises[pi]();}
         renderAllievi();
         var msg='Importati '+aggiunti+' allievi';
         if(saltati>0)msg+='\n'+saltati+' gia presenti (saltati)';
         alert(msg);
-      });
+      })();
     }catch(err){alert('Errore lettura file: '+err.message);}
     input.value='';
   };
@@ -811,7 +815,6 @@ function importaExcel(input){
 }
 
 async function aggiungiAllievoSilenzioso(nome){
-  if(allievi.find(function(a){return a.nome===nome;}))return;
   try{
     var res=await fetchAuth(API+'/api/allievi/'+session.turno,{
       method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
