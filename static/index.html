@@ -769,47 +769,38 @@ function importaExcel(input){
       }
       if(headerRow<0){headerRow=0;nameCol=0;}
 
-      var aggiunti=0,saltati=0;
-      var promises=[];
-      // Set locale per tracciare i nomi già visti IN QUESTA importazione
-      // (allievi[] si aggiorna solo dopo la risposta del server, non in tempo reale)
+      // Costruisce lista nomi definitiva con gestione duplicati
       var nomiUsati={};
-      // Pre-popola con i nomi già presenti
       allievi.forEach(function(a){nomiUsati[a.nome.toLowerCase()]=true;});
+      var nomiDaAggiungere=[];
 
       for(var i=headerRow+1;i<rows.length;i++){
         var v=String(rows[i][nameCol]||'').trim();
         if(!v||/^\d+$/.test(v))continue;
         if(keywords.some(function(k){return v.toLowerCase()===k;}))continue;
-        // Prende solo l'ultima parola = il nome
-        // Se duplicato, aggiunge le prime 3 lettere del cognome (prima parola)
         var parti=v.split(/\s+/);
         var nomeBase=parti[parti.length-1];
         if(!nomeBase)continue;
-        // Se duplicato aggiunge numero: matteo2, matteo3...
         var nome=nomeBase;
         var contatore=2;
-        while(nomiUsati[nome.toLowerCase()]){
-          nome=nomeBase+contatore;
-          contatore++;
-        }
-        nomiUsati[nome.toLowerCase()]=true; // segna subito come usato
-        aggiunti++;
-        // Salva come funzione (non Promise) per esecuzione sequenziale
-        var _nome=nome;
-        promises.push(function(){return aggiungiAllievoSilenzioso(_nome);});
+        while(nomiUsati[nome.toLowerCase()]){nome=nomeBase+contatore;contatore++;}
+        nomiUsati[nome.toLowerCase()]=true;
+        nomiDaAggiungere.push(nome);
       }
 
-      if(!promises.length&&!saltati){alert('Nessun nome trovato nel file.');input.value='';return;}
+      if(!nomiDaAggiungere.length){alert('Nessun nome trovato nel file.');input.value='';return;}
 
-      // Esegue in sequenza (non parallelo) cosi allievi[] e sempre aggiornato
+      // Esegue le chiamate al server in sequenza usando i nomi gia calcolati
       (async function(){
-        for(var pi=0;pi<promises.length;pi++){await promises[pi]();}
-        renderAllievi();
-        var msg='Importati '+aggiunti+' allievi';
-        if(saltati>0)msg+='\n'+saltati+' gia presenti (saltati)';
-        alert(msg);
+        var aggiunti=0;
+        for(var i=0;i<nomiDaAggiungere.length;i++){
+          await aggiungiAllievoSilenzioso(nomiDaAggiungere[i]);
+          aggiunti++;
+        }
+        await caricaAllievi(); // ricarica tutto dal server per sicurezza
+        alert('Importati '+aggiunti+' allievi');
       })();
+
     }catch(err){alert('Errore lettura file: '+err.message);}
     input.value='';
   };
