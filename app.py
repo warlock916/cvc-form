@@ -1,871 +1,1337 @@
-from flask import Flask, request, jsonify, send_from_directory, Response, send_file
-from flask_cors import CORS
-import os, secrets, functools, csv, io, hashlib, json, base64
-from datetime import date
-from werkzeug.utils import secure_filename
-
-app = Flask(__name__, static_folder='static')
-CORS(app)
-
-ADMIN_PWD    = os.environ.get('ADMIN_PASSWORD', 'admin123')
-FOTO_PWD     = os.environ.get('FOTO_PASSWORD', 'titta01')
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
-UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# ── Database setup ────────────────────────────────────────────────────────────
-# Supporta sia PostgreSQL (Railway) che SQLite (locale/fallback)
-# Railway fornisce DATABASE_URL come "postgresql://..." o "postgres://..."
-
-USE_PG = False
-PH = '?'
-
-if DATABASE_URL:
-    try:
-        import psycopg2
-        import psycopg2.extras
-        # Railway usa sia "postgres://" che "postgresql://"
-        _db_url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-
-        def get_db():
-            conn = psycopg2.connect(_db_url, sslmode='require')
-            return conn
-
-        # Test connessione
-        _test = get_db()
-        _test.close()
-        USE_PG = True
-        PH = '%s'
-        print(f"[DB] PostgreSQL connesso OK")
-    except Exception as e:
-        print(f"[DB] PostgreSQL fallito ({e}), uso SQLite")
-        USE_PG = False
-
-if not USE_PG:
-    import sqlite3
-    DB = os.environ.get('DB_PATH', 'cvc_istruttori.db')
-    def get_db():
-        conn = sqlite3.connect(DB)
-        conn.row_factory = sqlite3.Row
-        return conn
-    PH = '?'
-    print(f"[DB] SQLite: {DB}")
-
-def rows_to_dicts(rows, cursor=None):
-    if not rows: return []
-    if USE_PG:
-        cols = [desc[0] for desc in cursor.description]
-        return [dict(zip(cols, row)) for row in rows]
-    return [dict(r) for r in rows]
-
-def row_to_dict(row, cursor=None):
-    if row is None: return None
-    if USE_PG:
-        cols = [desc[0] for desc in cursor.description]
-        return dict(zip(cols, row))
-    return dict(row)
-
-def hash_pwd(pwd):
-    return hashlib.sha256(pwd.encode()).hexdigest()
-
-def get_field(row, idx, name):
-    """Accede a un campo di una riga in modo compatibile PG/SQLite."""
-    if row is None: return None
-    return row[idx] if USE_PG else row[name]
-
-# ── Corsi disponibili ────────────────────────────────────────────────────────
-CORSI_VALIDI = ['ADV', 'Istruttori1', 'IstruttoriC3']
-
-# ── Schema valutazioni per corso ─────────────────────────────────────────────
-# Ogni sezione ha: macro (titolo), items (lista dict con peso e desc)
-# Per fogli operativi: items è lista di stringhe (senza peso)
-
-SCHEMA_ADV = [
-    {'macro': '1. Navigazione a vela', 'items': [
-        {'peso': 2, 'desc': "È in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato"},
-        {'peso': 3, 'desc': "È in grado di eseguire le manovre fondamentali (gavitello, ancoraggio, regolazione e cambio velatura)"},
-        {'peso': 3, 'desc': "È in grado di eseguire le manovre fondamentali con metodo e consapevolezza (SN+VI)"},
-    ]},
-    {'macro': '2. Mezzi e procedure di sicurezza', 'items': [
-        {'peso': 2, 'desc': "È in grado di preparare i mezzi di sicurezza e gestire motore nel rispetto delle norme ambientali"},
-        {'peso': 3, 'desc': "È in grado di collaborare con l'istruttore durante le manovre di sicurezza"},
-        {'peso': 3, 'desc': "Si comporta coerentemente alle procedure di sicurezza, in mare e a terra"},
-    ]},
-    {'macro': '3. Didattica alla lavagna e in mare', 'items': [
-        {'peso': 2, 'desc': "È in grado di comprendere le indicazioni didattiche del CT e fare da facilitatore agli allievi"},
-    ]},
-    {'macro': '4. Capacità gestionale e lavoro in team', 'items': [
-        {'peso': 2, 'desc': "È in grado di supportare il gruppo istruttori sia a terra che in mare"},
-        {'peso': 2, 'desc': "È disponibile ad accrescere la propria esperienza collaborando con il team istruttori AdV"},
-        {'peso': 1, 'desc': "Condivide e promuove le norme di comportamento (carta dei valori, inclusione, sostenibilità)"},
-    ]},
-    {'macro': '5. Consapevolezza del ruolo – Motivazione Impegno Disponibilità', 'items': [
-        {'peso': 2, 'desc': "È consapevole di essere modello di riferimento a terra e a mare"},
-        {'peso': 2, 'desc': "È in grado di mantenere la calma in situazioni di stress, sostiene e incoraggia gli altri"},
-        {'peso': 2, 'desc': "È sempre un elemento proattivo, non si tira indietro o delega ad altri"},
-    ]},
-    {'macro': '6. Capacità organizzative e aspetti logistici', 'items': [
-        {'peso': 2, 'desc': "È in grado di supportare e facilitare le attività a mare (scalo, caletta, veleria) e a terra"},
-        {'peso': 1, 'desc': "È in grado di prevenire e risolvere piccole avarie coordinandosi con CT e staff"},
-        {'peso': 1, 'desc': "Conosce le procedure di prevenzione ed emergenza a terra e a mare"},
-    ]},
-]
-
-SCHEMA_IS1 = [
-    {'macro': '1. Navigazione a vela', 'items': [
-        {'peso': 2, 'desc': "È in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato"},
-        {'peso': 3, 'desc': "Esegue costantemente tutte le manovre fondamentali garantendo la totale sicurezza dell'imbarcazione"},
-        {'peso': 3, 'desc': "Esegue tutte le manovre con metodo e cognizione di causa, con chiara via di fuga (SN+VI)"},
-    ]},
-    {'macro': '2. Mezzi e procedure di sicurezza', 'items': [
-        {'peso': 2, 'desc': "Conduce ed esegue le manovre base in autonomia e sufficiente sicurezza con gozzo e gommone"},
-        {'peso': 3, 'desc': "Imposta manovre di avvicinamento e assistenza con metodo, ha sempre chiara la via di fuga"},
-        {'peso': 3, 'desc': "Mantiene il controllo del mezzo senza diventare pericoloso per sé e per gli assistiti"},
-    ]},
-    {'macro': '3. Didattica alla lavagna e in mare', 'items': [
-        {'peso': 3, 'desc': "Organizza i contenuti di un argomento individuandone i punti chiave con sufficiente conoscenza"},
-        {'peso': 3, 'desc': "Comunica con sufficiente efficacia i punti chiave, gestendo lavagna con parole e disegni chiari"},
-        {'peso': 1, 'desc': "È in grado di valutare se l'obiettivo didattico è stato raggiunto"},
-    ]},
-    {'macro': '4. Capacità gestionale e team – Organizzazione e Comunicazione', 'items': [
-        {'peso': 2, 'desc': "Lavora in team per il raggiungimento dell'obiettivo comune"},
-        {'peso': 2, 'desc': "Organizza, gestisce e comunica esercizi a mare secondo l'obiettivo e nei tempi stabiliti"},
-        {'peso': 1, 'desc': "È disponibile a condividere la propria esperienza nautica a disposizione del team"},
-    ]},
-    {'macro': '5. Consapevolezza del ruolo – Responsabilità, Motivazione, Impegno', 'items': [
-        {'peso': 2, 'desc': "Crede nel ruolo dell'istruttore come modello, comprende responsabilità e promuove carta dei valori"},
-        {'peso': 2, 'desc': "Mantiene calma e lucidità sotto forte stress fisico/emotivo e la infonde negli altri"},
-        {'peso': 2, 'desc': "Gestisce consapevolmente le proprie risorse psicofisiche, proattivo verso istruttori, allievi e staff"},
-    ]},
-    {'macro': '6. Capacità organizzative e aspetti logistici', 'items': [
-        {'peso': 2, 'desc': "Gestisce e coordina attività a mare (comandata mezzi, veleria, scalo, caletta) e a terra"},
-        {'peso': 1, 'desc': "Gestisce e indirizza le procedure per la manutenzione ordinaria e piccole avarie"},
-        {'peso': 1, 'desc': "Conosce, promuove e segue le procedure di prevenzione ed emergenza a terra e a mare"},
-    ]},
-]
-
-SCHEMA_C3 = [
-    {'macro': '1. Navigazione a vela', 'items': [
-        {'peso': 2, 'desc': "Conduce con buona sicurezza e autonomia un cabinato e il suo equipaggio anche in spazi ristretti"},
-        {'peso': 3, 'desc': "Esegue/fa eseguire costantemente tutte le manovre fondamentali del nuovo corso garantendo sicurezza"},
-        {'peso': 3, 'desc': "Esegue tutte le manovre con metodo e cognizione di causa, avendo sempre chiara la via di fuga (SN+VI)"},
-    ]},
-    {'macro': '2. Procedure di sicurezza', 'items': [
-        {'peso': 2, 'desc': "Ha consapevolezza della presa in consegna dell'imbarcazione ed esegue verifiche di sicurezza"},
-        {'peso': 3, 'desc': "Ha visione di spazio, tempo ed energie dell'equipaggio per rientri e ancoraggi in sicurezza"},
-        {'peso': 3, 'desc': "Mantiene il controllo del mezzo ad equipaggio ridotto senza diventare pericoloso"},
-    ]},
-    {'macro': '3. Didattica alla lavagna e in mare', 'items': [
-        {'peso': 3, 'desc': "Organizza i contenuti, esegue una lezione di 25 min, gestisce anche le domande difficili"},
-        {'peso': 2, 'desc': "Esegue lezioni a bordo con efficacia, spiega manovre, lascia sbagliare garantendo la sicurezza"},
-        {'peso': 2, 'desc': "Valuta il raggiungimento dell'obiettivo didattico, esegue debriefing a bordo con comunicazione positiva"},
-    ]},
-    {'macro': '4. Capacità gestionale e team – Organizzazione e Comunicazione', 'items': [
-        {'peso': 2, 'desc': "Recepisce nuove informazioni, lascia andare vecchie abitudini non in linea con CVC"},
-        {'peso': 2, 'desc': "Organizza e comunica il programma della giornata, si coordina con CT via VHF in navigazione di flotta"},
-        {'peso': 1, 'desc': "Riesce a lavorare in gruppo evitando assoli"},
-    ]},
-    {'macro': '5. Consapevolezza del ruolo – Responsabilità, Motivazione, Impegno', 'items': [
-        {'peso': 2, 'desc': "È modello di riferimento, prevede le mancanze degli allievi, promuove carta dei valori e inclusione"},
-        {'peso': 2, 'desc': "Mantiene calma e lucidità sotto forte stress fisico/emotivo e la infonde negli altri"},
-        {'peso': 2, 'desc': "È promotore come leader piuttosto che come persona al comando"},
-    ]},
-    {'macro': '6. Capacità organizzative e aspetti logistici', 'items': [
-        {'peso': 2, 'desc': "Gestisce la comandata a bordo e si coordina con le altre imbarcazioni tenendo conto dell'impatto ambientale"},
-        {'peso': 1, 'desc': "Gestisce ed esegue piccole avarie (circuito trinca e 3D) comunicando efficacemente allo staff"},
-        {'peso': 1, 'desc': "Conosce, promuove e segue le procedure di presa in carico, monitoraggio e riconsegna barca"},
-    ]},
-]
-
-SCHEMAS = {'ADV': SCHEMA_ADV, 'Istruttori1': SCHEMA_IS1, 'IstruttoriC3': SCHEMA_C3}
-SOGLIE  = {'ADV': None, 'Istruttori1': 66, 'IstruttoriC3': 66}
-PESI_VOTI = {'': 0, 'Non svolto': 2, 'Non Raggiunto': 0, 'Da Affinare': 1, 'Sufficiente': 2, 'Buono': 3, 'Ottimo': 4}
-VOTI_VALIDI = ['Non svolto', 'Non Raggiunto', 'Da Affinare', 'Sufficiente', 'Buono', 'Ottimo']
-
-def get_grade_cols(corso):
-    """Genera le colonne voto per un corso: voto_s{i}_c{j} per ogni sezione/item"""
-    schema = SCHEMAS.get(corso, [])
-    cols = []
-    for si, sec in enumerate(schema):
-        for ci, item in enumerate(sec['items']):
-            cols.append(f'v_{si}_{ci}')
-    return cols
-
-def calcola_totale(corso, grades):
-    schema = SCHEMAS.get(corso, [])
-    total = 0
-    for si, sec in enumerate(schema):
-        for ci, item in enumerate(sec['items']):
-            key = f'v_{si}_{ci}'
-            voto = grades.get(key, '') or ''
-            peso = item['peso']
-            total += PESI_VOTI.get(voto.strip(), 0) * peso
-    return total
-
-def init_db():
-    AI  = "SERIAL" if USE_PG else "INTEGER"
-    AIP = "" if USE_PG else "AUTOINCREMENT"
-    TS  = "TIMESTAMP DEFAULT NOW()" if USE_PG else "TEXT DEFAULT (datetime('now'))"
-
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS turni (
-            id         {AI} PRIMARY KEY {AIP},
-            numero     INTEGER NOT NULL,
-            corso      TEXT NOT NULL,
-            pwd_hash   TEXT NOT NULL,
-            pwd_plain  TEXT NOT NULL,
-            capoturno  TEXT NOT NULL,
-            email      TEXT,
-            soglia     INTEGER DEFAULT 66,
-            created_at {TS},
-            UNIQUE(numero, corso)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS allievi (
-            id         {AI} PRIMARY KEY {AIP},
-            turno      INTEGER NOT NULL,
-            corso      TEXT NOT NULL,
-            nome       TEXT NOT NULL,
-            foto_url   TEXT,
-            note       TEXT,
-            created_at {TS},
-            UNIQUE(turno, corso, nome)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni (
-            id         {AI} PRIMARY KEY {AIP},
-            allievo_id INTEGER NOT NULL,
-            vkey       TEXT NOT NULL,
-            valore     TEXT,
-            updated_at {TS},
-            UNIQUE(allievo_id, vkey)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni_op (
-            id         {AI} PRIMARY KEY {AIP},
-            allievo_id INTEGER NOT NULL,
-            vkey       TEXT NOT NULL,
-            valore     TEXT,
-            updated_at {TS},
-            UNIQUE(allievo_id, vkey)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS sessions (
-            token      TEXT PRIMARY KEY,
-            tipo       TEXT DEFAULT 'admin',
-            turno      INTEGER,
-            corso      TEXT,
-            foto_ok    INTEGER DEFAULT 0,
-            created_at {TS}
-        )''')
-        conn.commit()
-
-init_db()
-
-def migrate_db():
-    try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            if USE_PG:
-                # sessions.corso
-                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='corso'")
-                if not cur.fetchone():
-                    cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT'); conn.commit()
-                # sessions.foto_ok
-                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='foto_ok'")
-                if not cur.fetchone():
-                    cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0'); conn.commit()
-                # turni.soglia
-                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='soglia'")
-                if not cur.fetchone():
-                    cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
-            else:
-                cur.execute("PRAGMA table_info(sessions)")
-                cols = [r[1] for r in cur.fetchall()]
-                if 'corso' not in cols:
-                    cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT'); conn.commit()
-                if 'foto_ok' not in cols:
-                    cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0'); conn.commit()
-                cur.execute("PRAGMA table_info(turni)")
-                cols2 = [r[1] for r in cur.fetchall()]
-                if 'soglia' not in cols2:
-                    cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
-    except Exception as e:
-        print(f"Migration: {e}")
-
-migrate_db()
-
-# ── Auth helpers ──────────────────────────────────────────────────────────────
-def check_admin(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        token = request.headers.get('X-Admin-Token', '')
-        with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute(f"SELECT token FROM sessions WHERE token={PH} AND tipo='admin'", (token,))
-            if not cur.fetchone(): return jsonify({'error': 'Non autorizzato'}), 401
-        return f(*args, **kwargs)
-    return wrapper
-
-def check_turno_auth(turno_num, corso, token):
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f"SELECT token FROM sessions WHERE token={PH} AND (tipo='admin' OR (tipo='turno' AND turno={PH} AND corso={PH}))",
-                    (token, turno_num, corso))
-        return cur.fetchone() is not None
-
-# ── Static ────────────────────────────────────────────────────────────────────
-@app.route('/')
-def index():
-    return send_from_directory('static', 'index.html')
-
-@app.route('/uploads/<path:filename>')
-def serve_upload(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
-
-# ── Auth endpoints ─────────────────────────────────────────────────────────────
-@app.route('/api/login', methods=['POST'])
-def login():
-    d = request.json or {}
-    if d.get('password') != ADMIN_PWD:
-        return jsonify({'error': 'Password errata'}), 401
-    token = secrets.token_hex(32)
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f"INSERT INTO sessions(token,tipo) VALUES({PH},{PH})", (token, 'admin'))
-        conn.commit()
-    return jsonify({'token': token, 'tipo': 'admin'})
-
-@app.route('/api/verify', methods=['GET'])
-def verify():
-    token = request.headers.get('X-Auth-Token', '')
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT tipo,turno,corso FROM sessions WHERE token={PH}', (token,))
-        row = cur.fetchone()
-    if not row: return jsonify({'valid': False}), 401
-    if USE_PG:
-        tipo, turno, corso = row[0], row[1], row[2]
-    else:
-        tipo, turno, corso = row['tipo'], row['turno'], row['corso']
-    return jsonify({'valid': True, 'tipo': tipo, 'turno': turno, 'corso': corso})
-
-@app.route('/api/turno/<int:numero>/exists', methods=['GET'])
-def turno_exists(numero):
-    corso = request.args.get('corso', '')
-    with get_db() as conn:
-        cur = conn.cursor()
-        if corso:
-            cur.execute(f'SELECT id FROM turni WHERE numero={PH} AND corso={PH}', (numero, corso))
-            row = cur.fetchone()
-            return jsonify({'exists': row is not None})
-        return jsonify({'exists': False})
-
-@app.route('/api/turno/login', methods=['POST'])
-def turno_login():
-    d = request.json or {}
-    numero = d.get('numero')
-    pwd = d.get('password', '').strip()
-    corso = d.get('corso', '').strip()
-    capoturno = d.get('capoturno', '').strip()
-    email = d.get('email', '').strip()
-
-    if not numero or not pwd or not corso:
-        return jsonify({'error': 'Turno, corso e password obbligatori'}), 400
-    if corso not in CORSI_VALIDI:
-        return jsonify({'error': f'Corso non valido. Scegli tra: {", ".join(CORSI_VALIDI)}'}), 400
-    try:
-        numero = int(numero)
-    except:
-        return jsonify({'error': 'Numero turno non valido'}), 400
-    if not (1 <= numero <= 60):
-        return jsonify({'error': 'Il turno deve essere tra 1 e 60'}), 400
-
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT * FROM turni WHERE numero={PH} AND corso={PH}', (numero, corso))
-        turno_dict = row_to_dict(cur.fetchone(), cur)
-
-        if turno_dict is None:
-            # Primo accesso: serve capoturno
-            if not capoturno:
-                return jsonify({'error': 'Prima apertura: inserisci anche il Capo Turno', 'primo_accesso': True}), 400
-            try:
-                cur.execute(
-                    f'INSERT INTO turni(numero,corso,pwd_hash,pwd_plain,capoturno,email) VALUES({PH},{PH},{PH},{PH},{PH},{PH})',
-                    (numero, corso, hash_pwd(pwd), pwd, capoturno, email or None)
-                )
-                conn.commit()
-            except Exception as ex:
-                conn.rollback()
-                return jsonify({'error': 'Errore: ' + str(ex)}), 500
-            cur.execute(f'SELECT * FROM turni WHERE numero={PH} AND corso={PH}', (numero, corso))
-            turno_dict = row_to_dict(cur.fetchone(), cur)
-        else:
-            if hash_pwd(pwd) != turno_dict['pwd_hash']:
-                return jsonify({'error': 'Password errata per questo turno'}), 401
-
-        token = secrets.token_hex(32)
-        foto_ok = 1 if pwd == FOTO_PWD else 0
-        cur.execute(
-            f"INSERT INTO sessions(token,tipo,turno,corso,foto_ok) VALUES({PH},{PH},{PH},{PH},{PH})",
-            (token, 'turno', numero, corso, foto_ok)
-        )
-        conn.commit()
-
-    return jsonify({
-        'token': token, 'tipo': 'turno', 'turno': numero,
-        'corso': turno_dict['corso'], 'capoturno': turno_dict['capoturno'],
-        'soglia': turno_dict.get('soglia') if turno_dict.get('soglia') is not None else 66,
-        'fotoAbilitata': pwd == FOTO_PWD
-    })
-
-# ── Allievi ────────────────────────────────────────────────────────────────────
-@app.route('/api/allievi/<int:turno>', methods=['GET'])
-def get_allievi(turno):
-    token = request.headers.get('X-Auth-Token', '')
-    corso = request.args.get('corso', '')
-    if not check_turno_auth(turno, corso, token):
-        return jsonify({'error': 'Non autorizzato'}), 401
-
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT * FROM allievi WHERE turno={PH} AND corso={PH} ORDER BY nome', (turno, corso))
-        allievi = rows_to_dicts(cur.fetchall(), cur)
-
-        result = []
-        for a in allievi:
-            aid = a['id']
-            cur.execute(f'SELECT vkey, valore FROM valutazioni WHERE allievo_id={PH}', (aid,))
-            grades = {r[0] if USE_PG else r['vkey']: r[1] if USE_PG else r['valore']
-                      for r in cur.fetchall()}
-            cur.execute(f'SELECT vkey, valore FROM valutazioni_op WHERE allievo_id={PH}', (aid,))
-            op_grades = {r[0] if USE_PG else r['vkey']: r[1] if USE_PG else r['valore']
-                         for r in cur.fetchall()}
-            result.append({**a, 'grades': grades, 'op_grades': op_grades})
-
-    return jsonify({'allievi': result})
-
-@app.route('/api/allievi/<int:turno>', methods=['POST'])
-def add_allievo(turno):
-    token = request.headers.get('X-Auth-Token', '')
-    d = request.json or {}
-    corso = d.get('corso', '')
-    nome = d.get('nome', '').strip()
-    if not check_turno_auth(turno, corso, token):
-        return jsonify({'error': 'Non autorizzato'}), 401
-    if not nome:
-        return jsonify({'error': 'Nome obbligatorio'}), 400
-
-    with get_db() as conn:
-        cur = conn.cursor()
-        try:
-            if USE_PG:
-                cur.execute(
-                    f'INSERT INTO allievi(turno,corso,nome) VALUES({PH},{PH},{PH}) RETURNING id',
-                    (turno, corso, nome)
-                )
-                lid = cur.fetchone()[0]
-            else:
-                cur.execute(
-                    f'INSERT INTO allievi(turno,corso,nome) VALUES({PH},{PH},{PH})',
-                    (turno, corso, nome)
-                )
-                lid = cur.lastrowid
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            return jsonify({'error': 'Allievo già presente o errore: ' + str(e)}), 400
-
-    return jsonify({'ok': True, 'id': lid, 'nome': nome})
-
-@app.route('/api/allievi/<int:allievo_id>', methods=['DELETE'])
-def delete_allievo(allievo_id):
-    token = request.headers.get('X-Auth-Token', '')
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT turno, corso FROM allievi WHERE id={PH}', (allievo_id,))
-        row = cur.fetchone()
-        if not row: return jsonify({'error': 'Non trovato'}), 404
-        turno = row[0] if USE_PG else row['turno']
-        corso = row[1] if USE_PG else row['corso']
-        if not check_turno_auth(turno, corso, token):
-            return jsonify({'error': 'Non autorizzato'}), 401
-        cur.execute(f'DELETE FROM valutazioni WHERE allievo_id={PH}', (allievo_id,))
-        cur.execute(f'DELETE FROM allievi WHERE id={PH}', (allievo_id,))
-        conn.commit()
-    return jsonify({'ok': True})
-
-@app.route('/api/allievi/<int:allievo_id>/note', methods=['PUT'])
-def update_note(allievo_id):
-    token = request.headers.get('X-Auth-Token', '')
-    d = request.json or {}
-    note = d.get('note', '')
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT turno, corso FROM allievi WHERE id={PH}', (allievo_id,))
-        row = cur.fetchone()
-        if not row: return jsonify({'error': 'Non trovato'}), 404
-        turno = row[0] if USE_PG else row['turno']
-        corso = row[1] if USE_PG else row['corso']
-        if not check_turno_auth(turno, corso, token):
-            return jsonify({'error': 'Non autorizzato'}), 401
-        cur.execute(f'UPDATE allievi SET note={PH} WHERE id={PH}', (note, allievo_id))
-        conn.commit()
-    return jsonify({'ok': True})
-
-# ── Valutazioni ────────────────────────────────────────────────────────────────
-@app.route('/api/valutazioni/<int:allievo_id>', methods=['PUT'])
-def save_valutazione(allievo_id):
-    token = request.headers.get('X-Auth-Token', '')
-    d = request.json or {}
-    grades = d.get('grades', {})
-
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT turno, corso FROM allievi WHERE id={PH}', (allievo_id,))
-        row = cur.fetchone()
-        if not row: return jsonify({'error': 'Allievo non trovato'}), 404
-        turno = row[0] if USE_PG else row['turno']
-        corso = row[1] if USE_PG else row['corso']
-        if not check_turno_auth(turno, corso, token):
-            return jsonify({'error': 'Non autorizzato'}), 401
-
-        for vkey, valore in grades.items():
-            if valore not in VOTI_VALIDI and valore != '':
-                continue
-            cur.execute(f'SELECT id FROM valutazioni WHERE allievo_id={PH} AND vkey={PH}', (allievo_id, vkey))
-            existing = cur.fetchone()
-            if existing:
-                cur.execute(f'UPDATE valutazioni SET valore={PH} WHERE allievo_id={PH} AND vkey={PH}',
-                            (valore, allievo_id, vkey))
-            else:
-                cur.execute(f'INSERT INTO valutazioni(allievo_id,vkey,valore) VALUES({PH},{PH},{PH})',
-                            (allievo_id, vkey, valore))
-        conn.commit()
-    return jsonify({'ok': True})
-
-# ── Valutazioni Operative ─────────────────────────────────────────────────────
-@app.route('/api/valutazioni-op/<int:allievo_id>', methods=['PUT'])
-def save_valutazione_op(allievo_id):
-    token = request.headers.get('X-Auth-Token', '')
-    d = request.json or {}
-    grades = d.get('grades', {})
-
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT turno, corso FROM allievi WHERE id={PH}', (allievo_id,))
-        row = cur.fetchone()
-        if not row: return jsonify({'error': 'Allievo non trovato'}), 404
-        turno = row[0] if USE_PG else row['turno']
-        corso = row[1] if USE_PG else row['corso']
-        if not check_turno_auth(turno, corso, token):
-            return jsonify({'error': 'Non autorizzato'}), 401
-
-        for vkey, valore in grades.items():
-            if valore not in VOTI_VALIDI and valore != '':
-                continue
-            cur.execute(f'SELECT id FROM valutazioni_op WHERE allievo_id={PH} AND vkey={PH}', (allievo_id, vkey))
-            existing = cur.fetchone()
-            if existing:
-                cur.execute(f'UPDATE valutazioni_op SET valore={PH} WHERE allievo_id={PH} AND vkey={PH}',
-                            (valore, allievo_id, vkey))
-            else:
-                cur.execute(f'INSERT INTO valutazioni_op(allievo_id,vkey,valore) VALUES({PH},{PH},{PH})',
-                            (allievo_id, vkey, valore))
-        conn.commit()
-    return jsonify({'ok': True})
-ALLOWED_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
-@app.route('/api/foto/<int:allievo_id>', methods=['POST'])
-def upload_foto(allievo_id):
-    import traceback
-    try:
-        token = request.headers.get('X-Auth-Token', '')
-        with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute(f'SELECT turno, corso FROM allievi WHERE id={PH}', (allievo_id,))
-            row = cur.fetchone()
-            if not row: return jsonify({'error': 'Allievo non trovato'}), 404
-            turno = row[0] if USE_PG else row['turno']
-            corso = row[1] if USE_PG else row['corso']
-            if not check_turno_auth(turno, corso, token):
-                return jsonify({'error': 'Non autorizzato'}), 401
-            # Verifica permesso foto
-            cur.execute(f'SELECT foto_ok FROM sessions WHERE token={PH}', (token,))
-            sr = cur.fetchone()
-            fok = sr[0] if USE_PG else (sr['foto_ok'] if sr else 0)
-            if not fok:
-                return jsonify({'error': 'Caricamento foto non abilitato per questo accesso'}), 403
-
-        if 'foto' not in request.files:
-            return jsonify({'error': 'Nessun file'}), 400
-        file = request.files['foto']
-        if not file or not file.filename:
-            return jsonify({'error': 'File vuoto'}), 400
-
-        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-        if ext not in ALLOWED_EXT:
-            return jsonify({'error': f'Formato .{ext} non supportato'}), 400
-
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        nome_file = secure_filename(f"a{allievo_id}.{ext}")
-        path = os.path.join(UPLOAD_FOLDER, nome_file)
-        file.save(path)
-
-        try:
-            from PIL import Image
-            img = Image.open(path).convert('RGB')
-            w, h = img.size; m = min(w, h)
-            img = img.crop(((w-m)//2, (h-m)//2, (w+m)//2, (h+m)//2))
-            img = img.resize((100, 100), Image.LANCZOS)
-            img.save(path, quality=85)
-        except:
-            pass
-
-        foto_url = f'/uploads/{nome_file}'
-        with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute(f'UPDATE allievi SET foto_url={PH} WHERE id={PH}', (foto_url, allievo_id))
-            conn.commit()
-
-        return jsonify({'ok': True, 'foto_url': foto_url})
-    except Exception as e:
-        return jsonify({'error': str(e), 'trace': traceback.format_exc()[-500:]}), 500
-
-@app.route('/api/foto/all', methods=['DELETE'])
-@check_admin
-def delete_all_foto():
-    cancellate = 0
-    try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            cur.execute('SELECT id, foto_url FROM allievi WHERE foto_url IS NOT NULL')
-            rows = cur.fetchall()
-            for row in rows:
-                url = row[0 if USE_PG else 'foto_url'] if USE_PG else row['foto_url']
-                if USE_PG:
-                    url = row[1]
-                if url:
-                    path = os.path.join(UPLOAD_FOLDER, os.path.basename(url))
-                    try:
-                        os.remove(path)
-                    except:
-                        pass
-                    cancellate += 1
-            cur.execute('UPDATE allievi SET foto_url=NULL')
-            conn.commit()
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    return jsonify({'ok': True, 'cancellate': cancellate})
-
-# ── Stats e Admin ──────────────────────────────────────────────────────────────
-@app.route('/api/stats', methods=['GET'])
-@check_admin
-def get_stats():
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT COUNT(*) FROM allievi')
-        totale = (cur.fetchone()[0] if USE_PG else cur.fetchone()[0])
-        cur.execute('SELECT COUNT(DISTINCT numero) FROM turni')
-        n_turni = cur.fetchone()[0]
-        cur.execute('SELECT COUNT(DISTINCT capoturno) FROM turni')
-        n_istr = cur.fetchone()[0]
-        cur.execute('SELECT numero, corso, capoturno, email, pwd_plain, soglia FROM turni ORDER BY numero, corso')
-        turni = rows_to_dicts(cur.fetchall(), cur)
-
-        # Conteggio allievi per turno/corso
-        cur.execute('SELECT turno, corso, COUNT(*) as n FROM allievi GROUP BY turno, corso')
-        ac = rows_to_dicts(cur.fetchall(), cur)
-        ac_map = {(r['turno'], r['corso']): r['n'] for r in ac}
-        for t in turni:
-            t['n_allievi'] = ac_map.get((t['numero'], t['corso']), 0)
-            if t.get('soglia') is None: t['soglia'] = 66  # default per turni esistenti
-
-    return jsonify({
-        'totale_allievi': totale,
-        'n_turni': n_turni,
-        'n_istruttori': n_istr,
-        'turni': turni
-    })
-
-@app.route('/api/turno/<int:numero>/soglia', methods=['PUT'])
-@check_admin
-def update_soglia(numero):
-    d = request.json or {}
-    corso = d.get('corso', '')
-    soglia = d.get('soglia')
-    if not corso: return jsonify({'error': 'Corso obbligatorio'}), 400
-    try:
-        soglia = int(soglia)
-        if soglia < 0 or soglia > 999: raise ValueError()
-    except:
-        return jsonify({'error': 'Soglia non valida (0-999)'}), 400
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'UPDATE turni SET soglia={PH} WHERE numero={PH} AND corso={PH}',
-                    (soglia, numero, corso))
-        if cur.rowcount == 0:
-            return jsonify({'error': 'Turno non trovato'}), 404
-        conn.commit()
-    return jsonify({'ok': True, 'soglia': soglia})
-
-@app.route('/api/valutazioni/all', methods=['GET'])
-@check_admin
-def get_all_valutazioni():
-    q = request.args.get('q', '')
-    corso_f = request.args.get('corso', '')
-    turno_f = request.args.get('turno', '')
-    with get_db() as conn:
-        cur = conn.cursor()
-        sql = 'SELECT a.*, t.capoturno FROM allievi a JOIN turni t ON a.turno=t.numero AND a.corso=t.corso WHERE 1=1'
-        params = []
-        if q:
-            sql += f' AND a.nome LIKE {PH}'; params.append(f'%{q}%')
-        if corso_f:
-            sql += f' AND a.corso={PH}'; params.append(corso_f)
-        if turno_f:
-            try: sql += f' AND a.turno={PH}'; params.append(int(turno_f))
-            except: pass
-        sql += ' ORDER BY a.turno, a.corso, a.nome'
-        cur.execute(sql, params)
-        allievi = rows_to_dicts(cur.fetchall(), cur)
-
-        result = []
-        for a in allievi:
-            aid = a['id']
-            cur.execute(f'SELECT vkey, valore FROM valutazioni WHERE allievo_id={PH}', (aid,))
-            grades = {r[0] if USE_PG else r['vkey']: r[1] if USE_PG else r['valore']
-                      for r in cur.fetchall()}
-            totale = calcola_totale(a['corso'], grades)
-            result.append({**a, 'grades': grades, 'totale': totale})
-
-    return jsonify({'rows': result, 'total': len(result)})
-
-@app.route('/api/turno/<int:numero>', methods=['DELETE'])
-@check_admin
-def cancella_turno(numero):
-    corso = request.args.get('corso', '')
-    if not corso: return jsonify({'error': 'Corso obbligatorio'}), 400
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'SELECT id FROM allievi WHERE turno={PH} AND corso={PH}', (numero, corso))
-        ids = [r[0] if USE_PG else r['id'] for r in cur.fetchall()]
-        for aid in ids:
-            cur.execute(f'DELETE FROM valutazioni WHERE allievo_id={PH}', (aid,))
-        cur.execute(f'DELETE FROM allievi WHERE turno={PH} AND corso={PH}', (numero, corso))
-        cur.execute(f'DELETE FROM turni WHERE numero={PH} AND corso={PH}', (numero, corso))
-        cur.execute(f'DELETE FROM sessions WHERE tipo={PH} AND turno={PH} AND corso={PH}', ('turno', numero, corso))
-        conn.commit()
-    return jsonify({'ok': True, 'allievi': len(ids)})
-
-# ── Export CSV ─────────────────────────────────────────────────────────────────
-@app.route('/api/export/csv', methods=['GET'])
-@check_admin
-def export_csv():
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT a.*, t.capoturno FROM allievi a JOIN turni t ON a.turno=t.numero AND a.corso=t.corso ORDER BY a.turno, a.corso, a.nome')
-        allievi = rows_to_dicts(cur.fetchall(), cur)
-
-    output = io.StringIO()
-    output.write('\ufeff')  # BOM per Excel
-    writer = csv.writer(output)
-    writer.writerow(['Turno', 'Corso', 'Capo Turno', 'Allievo', 'Sezione', 'Criterio', 'Peso', 'Voto', 'Totale'])
-
-    with get_db() as conn:
-        cur = conn.cursor()
-        for a in allievi:
-            aid = a['id']
-            cur.execute(f'SELECT vkey, valore FROM valutazioni WHERE allievo_id={PH}', (aid,))
-            grades = {r[0] if USE_PG else r['vkey']: r[1] if USE_PG else r['valore']
-                      for r in cur.fetchall()}
-            totale = calcola_totale(a['corso'], grades)
-            schema = SCHEMAS.get(a['corso'], [])
-            for si, sec in enumerate(schema):
-                for ci, item in enumerate(sec['items']):
-                    vkey = f'v_{si}_{ci}'
-                    writer.writerow([
-                        a['turno'], a['corso'], a['capoturno'], a['nome'],
-                        sec['macro'], item['desc'][:80], item['peso'],
-                        grades.get(vkey, ''), totale
-                    ])
-
-    output.seek(0)
-    return Response(output.getvalue(), mimetype='text/csv;charset=utf-8',
-                    headers={'Content-Disposition': 'attachment; filename=CVC_Istruttori.csv'})
-
-# ── Backup / Restore ───────────────────────────────────────────────────────────
-@app.route('/api/backup', methods=['GET'])
-@check_admin
-def backup():
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT * FROM turni')
-        turni = rows_to_dicts(cur.fetchall(), cur)
-        cur.execute('SELECT * FROM allievi')
-        allievi = rows_to_dicts(cur.fetchall(), cur)
-        cur.execute('SELECT * FROM valutazioni')
-        valutazioni = rows_to_dicts(cur.fetchall(), cur)
-    data = json.dumps({'turni': turni, 'allievi': allievi, 'valutazioni': valutazioni}, default=str)
-    return Response(data, mimetype='application/json',
-                    headers={'Content-Disposition': f'attachment; filename=CVC_backup_{date.today()}.json'})
-
-@app.route('/api/restore', methods=['POST'])
-@check_admin
-def restore():
-    file = request.files.get('file')
-    if not file: return jsonify({'error': 'Nessun file'}), 400
-    try:
-        data = json.load(file)
-    except:
-        return jsonify({'error': 'File JSON non valido'}), 400
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute('DELETE FROM valutazioni')
-        cur.execute('DELETE FROM allievi')
-        cur.execute('DELETE FROM turni')
-        cur.execute('DELETE FROM sessions')
-        for t in data.get('turni', []):
-            cur.execute(f'INSERT INTO turni(numero,corso,pwd_hash,pwd_plain,capoturno,email) VALUES({PH},{PH},{PH},{PH},{PH},{PH})',
-                        (t['numero'], t['corso'], t['pwd_hash'], t['pwd_plain'], t['capoturno'], t.get('email')))
-        for a in data.get('allievi', []):
-            cur.execute(f'INSERT INTO allievi(turno,corso,nome,foto_url,note) VALUES({PH},{PH},{PH},{PH},{PH})',
-                        (a['turno'], a['corso'], a['nome'], a.get('foto_url'), a.get('note')))
-        for v in data.get('valutazioni', []):
-            cur.execute(f'INSERT INTO valutazioni(allievo_id,vkey,valore) VALUES({PH},{PH},{PH})',
-                        (v['allievo_id'], v['vkey'], v['valore']))
-        conn.commit()
-    return jsonify({'ok': True, 'turni': len(data.get('turni', [])), 'allievi': len(data.get('allievi', []))})
-
-@app.route('/api/reset', methods=['POST'])
-@check_admin
-def reset_db():
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute('DELETE FROM valutazioni')
-        cur.execute('DELETE FROM allievi')
-        cur.execute('DELETE FROM turni')
-        cur.execute('DELETE FROM sessions')
-        conn.commit()
-    return jsonify({'ok': True})
-
-@app.route('/api/check-libs', methods=['GET'])
-def check_libs():
-    results = {}
-    for lib in ['pg8000', 'PIL', 'flask_cors']:
-        try:
-            __import__(lib)
-            results[lib] = 'OK'
-        except ImportError as e:
-            results[lib] = f'MANCANTE: {e}'
-    return jsonify(results)
-
-@app.errorhandler(404)
-def not_found(e):
-    return send_from_directory('static', 'index.html')
-
-@app.errorhandler(500)
-def server_error(e):
-    return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CVC - Valutazione Formazione Istruttori</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--blu:#1F4E79;--blu2:#2E75B6;--azzurro:#BDD7EE;--oro:#FFD700;--verde:#70AD47;--rosso:#C00000;--arancio:#E6A817;--teal:#0d9488;--teal2:#ccfbf1;--grigio:#F2F2F2;--bordo:#CCCCCC;--testo:#1a1a1a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;background:#e8f0f7;color:var(--testo);min-height:100vh;}
+header{background:var(--blu);color:white;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+header h1{font-size:1rem;}
+.hdr-info{font-size:.78rem;opacity:.9;text-align:right;line-height:1.5;}
+nav{background:var(--blu2);display:flex;flex-wrap:wrap;}
+nav button{background:none;border:none;color:rgba(255,255,255,.75);padding:10px 16px;cursor:pointer;font-size:.85rem;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
+nav button:hover{color:white;background:rgba(255,255,255,.1);}
+nav button.active{color:white;border-bottom:3px solid var(--oro);font-weight:bold;}
+.container{max-width:1400px;margin:16px auto;padding:0 10px 60px;}
+.card{background:white;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:18px 20px;margin-bottom:16px;}
+.card h2{color:var(--blu);font-size:.95rem;margin-bottom:14px;padding-bottom:7px;border-bottom:2px solid var(--azzurro);}
+.login-screen{max-width:460px;margin:40px auto;}
+.login-screen .card{padding:28px;}
+.form-row{margin-bottom:12px;}
+.form-row label{display:block;font-size:.82rem;font-weight:bold;color:#444;margin-bottom:4px;}
+.form-row input,.form-row select{width:100%;padding:9px 12px;border:1.5px solid var(--bordo);border-radius:6px;font-size:.9rem;}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--blu2);}
+.primo-extra{display:none;border-top:1px dashed var(--bordo);padding-top:12px;margin-top:12px;}
+.primo-extra.show{display:block;}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:560px;margin:0 auto;}
+.home-card{background:white;border:3px solid var(--bordo);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .25s;}
+.home-card:hover{border-color:var(--blu2);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.12);}
+.home-card .icon{font-size:2.8rem;margin-bottom:10px;}
+.home-card .title{font-size:1rem;font-weight:bold;color:var(--blu);margin-bottom:6px;}
+.home-card .sub{font-size:.78rem;color:#777;line-height:1.5;}
+input[type=text],input[type=password],input[type=email],select{padding:7px 10px;border:1.5px solid var(--bordo);border-radius:6px;font-size:.88rem;}
+input:focus,select:focus{outline:none;border-color:var(--blu2);}
+.alert{padding:9px 13px;border-radius:6px;margin-bottom:10px;font-size:.84rem;display:none;}
+.alert.show{display:block;}
+.alert-ok{background:#e8f5e0;border-left:4px solid var(--verde);color:#3a6020;}
+.alert-err{background:#fce8e8;border-left:4px solid var(--rosso);color:#7a1010;}
+.btn{padding:8px 18px;border:none;border-radius:6px;font-size:.86rem;font-weight:bold;cursor:pointer;transition:all .2s;}
+.btn-primary{background:var(--blu2);color:white;}.btn-primary:hover{background:var(--blu);}
+.btn-success{background:var(--verde);color:white;}.btn-success:hover{background:#5a9038;}
+.btn-danger{background:var(--rosso);color:white;}.btn-danger:hover{background:#990000;}
+.btn-warning{background:var(--arancio);color:white;}
+.btn-outline{background:none;border:1.5px solid var(--blu2);color:var(--blu2);}.btn-outline:hover{background:var(--azzurro);}
+.btn-sm{padding:4px 10px;font-size:.78rem;}
+.btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+.allievi-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.allievo-tab{padding:6px 14px;border:2px solid var(--bordo);border-radius:20px;font-size:.82rem;font-weight:bold;cursor:pointer;background:white;color:#555;transition:all .2s;display:flex;align-items:center;gap:6px;}
+.allievo-tab:hover{border-color:var(--blu2);color:var(--blu);}
+.allievo-tab.active{background:var(--blu);border-color:var(--blu);color:white;}
+.allievo-tab img{width:20px;height:20px;border-radius:50%;object-fit:cover;}
+.allievo-tab .del-x{background:rgba(255,255,255,.3);border:none;color:inherit;width:16px;height:16px;border-radius:50%;font-size:.68rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;}
+.allievo-tab .del-x:hover{background:rgba(200,0,0,.7);color:white;}
+.foto-box{display:flex;align-items:center;gap:14px;background:#f8f9fa;border:2px dashed var(--bordo);border-radius:8px;padding:12px;margin-bottom:14px;}
+.foto-circle{width:66px;height:66px;border-radius:50%;background:#dde;border:3px solid var(--azzurro);display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;cursor:pointer;flex-shrink:0;}
+.foto-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.foto-info{flex:1;font-size:.85rem;color:#555;}
+.foto-info strong{color:var(--blu);font-size:.95rem;display:block;margin-bottom:3px;}
+.foto-label{padding:6px 14px;border:2px solid var(--blu2);border-radius:6px;font-size:.8rem;font-weight:bold;color:var(--blu);cursor:pointer;display:inline-block;transition:all .2s;}
+.foto-label:hover{background:var(--blu2);color:white;}
+.note-box{background:#fffbeb;border-left:4px solid var(--arancio);border-radius:0 8px 8px 0;padding:12px;margin-bottom:16px;}
+.note-box label{font-size:.78rem;font-weight:bold;color:var(--arancio);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:block;}
+.note-box textarea{width:100%;min-height:80px;border:1px solid var(--bordo);border-radius:6px;padding:8px;font-size:.87rem;resize:vertical;background:white;outline:none;font-family:inherit;line-height:1.5;}
+.note-box textarea:focus{border-color:var(--arancio);}
+.eval-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.eval-table th{background:var(--blu);color:white;padding:9px 12px;text-align:left;font-weight:600;}
+.eval-table th.center{text-align:center;}
+.eval-table td{padding:7px 12px;border-bottom:1px solid #eee;vertical-align:middle;}
+.eval-table tr:hover td{background:#f9f9f9;}
+.macro-row td{background:var(--azzurro);font-weight:bold;color:var(--blu);padding:10px 12px;}
+.semaforo-row td{background:var(--grigio);font-weight:600;font-size:.79rem;padding:5px 12px;}
+.total-row td{background:var(--blu);color:white;font-weight:bold;font-size:.95rem;padding:11px 12px;}
+.peso-badge{display:inline-block;background:#555;color:white;font-size:.68rem;font-weight:bold;padding:2px 6px;border-radius:8px;white-space:nowrap;}
+.voto-sel{padding:5px 8px;border:2px solid var(--bordo);border-radius:6px;font-size:.81rem;min-width:130px;cursor:pointer;outline:none;font-family:inherit;}
+.v-ns{background:#f1f5f9;color:#64748b;}
+.v-nr{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+.v-da{background:#fef3c7;color:#92400e;border-color:#fcd34d;}
+.v-suf{background:#fef9c3;color:#713f12;border-color:#fde047;}
+.v-buo{background:#ccfbf1;color:#0f766e;border-color:#5eead4;}
+.v-ott{background:#dcfce7;color:#15803d;border-color:#86efac;}
+.sem-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.76rem;font-weight:bold;}
+.sem-badge::before{content:'';width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sem-r{background:#fee2e2;color:#b91c1c;}.sem-r::before{background:#b91c1c;}
+.sem-g{background:#fef3c7;color:#92400e;}.sem-g::before{background:#d97706;}
+.sem-v{background:#dcfce7;color:#15803d;}.sem-v::before{background:#16a34a;}
+.sem-0{background:#f1f5f9;color:#64748b;}.sem-0::before{background:#cbd5e1;}
+.score-box{display:inline-flex;flex-direction:column;align-items:center;background:white;border:3px solid var(--bordo);border-radius:10px;padding:10px 18px;min-width:80px;}
+.score-box .sval{font-size:1.7rem;font-weight:800;color:var(--blu);}
+.score-box .slbl{font-size:.68rem;color:#666;font-weight:600;text-align:center;}
+.score-box.pass{border-color:var(--verde);}.score-box.pass .sval{color:var(--verde);}
+.score-box.fail{border-color:var(--rosso);}.score-box.fail .sval{color:var(--rosso);}
+.np-warn{background:#fee2e2;border:2px solid var(--rosso);border-radius:8px;padding:9px 14px;font-size:.84rem;font-weight:bold;color:var(--rosso);margin-bottom:12px;display:none;align-items:center;gap:8px;}
+.np-warn.show{display:flex;}
+.op-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.op-table th{background:var(--teal);color:white;padding:9px 12px;text-align:left;font-weight:600;}
+.op-table td{padding:7px 12px;border-bottom:1px solid #eee;vertical-align:middle;}
+.op-table tr:hover td{background:var(--teal2);}
+.op-macro td{background:var(--teal2);font-weight:bold;color:var(--teal);padding:10px 12px;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+.toolbar input,.toolbar select{width:auto;flex:1;min-width:120px;}
+.badge{background:var(--blu2);color:white;border-radius:20px;padding:2px 8px;font-size:.74rem;font-weight:bold;}
+table.riepilogo{width:100%;border-collapse:collapse;font-size:.78rem;}
+table.riepilogo thead tr{background:var(--blu);color:white;}
+table.riepilogo th{padding:7px 9px;text-align:left;font-weight:600;}
+table.riepilogo tbody tr{border-bottom:1px solid #eee;}
+table.riepilogo tbody tr:hover{background:var(--grigio);}
+table.riepilogo td{padding:6px 9px;}
+.tag{background:var(--azzurro);color:var(--blu);border-radius:4px;padding:1px 6px;font-weight:bold;font-size:.74rem;}
+.score{background:var(--oro);color:#333;border-radius:4px;padding:2px 7px;font-weight:bold;display:inline-block;min-width:24px;text-align:center;font-size:.78rem;}
+.empty{text-align:center;padding:28px;color:#aaa;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+.stat{background:var(--grigio);border-radius:8px;padding:10px;text-align:center;}
+.stat .n{font-size:1.7rem;font-weight:bold;color:var(--blu);}
+.stat .l{font-size:.74rem;color:#666;margin-top:2px;}
+.turni-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:8px;}
+.turni-table th{background:var(--blu);color:white;padding:7px 10px;text-align:left;}
+.turni-table td{padding:6px 10px;border-bottom:1px solid #eee;}
+.turni-table tr:hover td{background:#f0f6ff;}
+.pwd-cell{font-family:monospace;background:#f5f5f5;border-radius:3px;padding:2px 6px;font-size:.8rem;}
+.admin-gate{text-align:center;padding:28px 16px;}
+.admin-gate input{max-width:230px;margin:10px auto;display:block;}
+.logout-btn{font-size:.76rem;margin-left:10px;padding:3px 9px;}
+.add-row{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;}
+.add-row input[type=text]{flex:1;min-width:140px;max-width:260px;}
+.page{display:none;}.page.active{display:block;}
+.spinner{display:none;width:16px;height:16px;border:3px solid #ccc;border-top-color:var(--blu2);border-radius:50%;animation:spin .7s linear infinite;margin:12px auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.save-toast{position:fixed;bottom:18px;right:18px;background:var(--verde);color:white;padding:10px 18px;border-radius:10px;font-size:.85rem;font-weight:bold;box-shadow:0 4px 14px rgba(0,0,0,.2);display:none;z-index:200;align-items:center;gap:8px;}
+.save-toast.show{display:flex;}
+/* Resoconto */
+.res-table{width:100%;border-collapse:collapse;font-size:.84rem;}
+.res-table th{background:var(--blu);color:white;padding:10px 12px;text-align:left;font-weight:600;}
+.res-table th.center{text-align:center;}
+.res-table td{padding:9px 12px;border-bottom:1px solid #eee;vertical-align:middle;}
+.res-table tr:hover td{background:#f0f6ff;}
+.res-rank{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-weight:800;font-size:.85rem;background:var(--grigio);color:#555;}
+.res-rank.r1{background:#FFD700;color:#7a4f00;}
+.res-rank.r2{background:#C0C0C0;color:#444;}
+.res-rank.r3{background:#cd7f32;color:#fff;}
+.res-score{display:inline-block;min-width:42px;text-align:center;padding:4px 10px;border-radius:20px;font-weight:800;font-size:.95rem;}
+.res-score.pass{background:#dcfce7;color:#15803d;}
+.res-score.fail{background:#fee2e2;color:#b91c1c;}
+.res-score.neutral{background:#fef9c3;color:#713f12;}
+.res-foto{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--azzurro);}
+.res-foto-ph{width:38px;height:38px;border-radius:50%;background:var(--grigio);display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;border:2px solid var(--bordo);}
+.res-sem-row{display:flex;gap:4px;flex-wrap:wrap;}
+.res-sem{display:inline-block;width:10px;height:10px;border-radius:50%;}
+.res-sem.v{background:#16a34a;}.res-sem.g{background:#d97706;}.res-sem.r{background:#b91c1c;}
+/* Giornaliero */
+.giorn-days{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.giorn-day-btn{padding:7px 16px;border:2px solid var(--bordo);border-radius:20px;font-size:.85rem;font-weight:bold;cursor:pointer;background:white;color:#555;transition:all .2s;}
+.giorn-day-btn:hover{border-color:var(--blu2);color:var(--blu);}
+.giorn-day-btn.active{color:white;border-color:var(--blu);background:var(--blu);}
+.giorn-day-btn.has-data{border-style:solid;}
+.giorn-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.giorn-table th{background:var(--blu);color:white;padding:8px 6px;text-align:center;font-weight:600;white-space:nowrap;}
+.giorn-table th.nome-th{text-align:left;min-width:90px;position:sticky;left:0;z-index:3;background:var(--blu);}
+.giorn-table td{padding:4px 4px;border-bottom:1px solid #eee;vertical-align:middle;text-align:center;}
+.giorn-table td.nome-td{text-align:left;font-weight:600;background:#f8f9fa;position:sticky;left:0;z-index:2;border-right:2px solid #ddd;padding:4px 8px;white-space:nowrap;}
+.giorn-table tr:hover td{background:#f0f6ff;}
+.giorn-table tr:hover td.nome-td{background:#e8f0fb;}
+.giorn-sel{width:100%;padding:3px 4px;border:1.5px solid var(--bordo);border-radius:5px;font-size:.75rem;cursor:pointer;outline:none;font-family:inherit;min-width:105px;}
+.giorn-sel.v-nr{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+.giorn-sel.v-da{background:#fef3c7;color:#92400e;border-color:#fcd34d;}
+.giorn-sel.v-suf{background:#fef9c3;color:#713f12;border-color:#fde047;}
+.giorn-sel.v-buo{background:#ccfbf1;color:#0f766e;border-color:#5eead4;}
+.giorn-sel.v-ott{background:#dcfce7;color:#15803d;border-color:#86efac;}
+.giorn-sel.v-ns{background:#f1f5f9;color:#64748b;}
+.nota-giorn{width:100%;padding:2px 4px;border:1px solid var(--bordo);border-radius:4px;font-size:.72rem;resize:none;font-family:inherit;outline:none;}
+.nota-giorn:focus{border-color:var(--arancio);}
+.progress-wrap{margin-top:20px;overflow-x:auto;}
+.prog-table{border-collapse:collapse;font-size:.78rem;min-width:600px;}
+.prog-table th{background:var(--blu);color:white;padding:6px 10px;text-align:center;font-weight:600;}
+.prog-table th.nome-th{text-align:left;min-width:90px;}
+.prog-table td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center;}
+.prog-table td.nome-td{text-align:left;font-weight:600;background:#f8f9fa;}
+.prog-dot{display:inline-block;width:28px;height:28px;border-radius:50%;line-height:28px;text-align:center;font-size:.72rem;font-weight:bold;color:white;}
+.prog-dot.p-v{background:var(--verde);}
+.prog-dot.p-g{background:var(--arancio);}
+.prog-dot.p-r{background:var(--rosso);}
+.prog-dot.p-0{background:#ddd;color:#999;}
+.prog-trend{font-size:.8rem;padding:2px 8px;border-radius:10px;font-weight:bold;}
+.prog-trend.up{background:#dcfce7;color:#15803d;}
+.prog-trend.down{background:#fee2e2;color:#b91c1c;}
+.prog-trend.flat{background:#f1f5f9;color:#64748b;}
+</style>
+</head>
+<body>
+<input type="file" id="foto-input" accept="image/*" style="display:none" onchange="uploadFoto(this)">
+<input type="file" id="excel-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="importaExcel(this)">
+<header>
+  <h1>&#9973; CVC - Valutazione Formazione Istruttori</h1>
+  <div class="hdr-info" id="hdr-info"></div>
+</header>
+<nav id="main-nav" style="display:none;">
+  <button id="nav-home" onclick="showPage('home',this)">&#127968; Home</button>
+  <button id="nav-scheda" onclick="showPage('scheda',this)">&#128203; Valutazione</button>
+  <button id="nav-op" onclick="showPage('operativo',this)">&#128676; Operativo</button>
+  <button id="nav-res" onclick="showPage('resoconto',this)">&#127942; Resoconto</button>
+  <button id="nav-giorn" onclick="showPage('giornaliero',this)">&#128197; Giornaliero</button>
+  <button id="nav-admin" onclick="showPage('admin',this)">&#128274; Admin</button>
+  <button onclick="doLogout()" style="margin-left:auto;">&#8617; Esci</button>
+</nav>
+<div id="save-toast" class="save-toast">&#10003; Salvato</div>
+<div class="container">
+
+<div id="page-login" class="page active login-screen">
+  <div class="card">
+    <h2 style="text-align:center;color:var(--blu);margin-bottom:20px;">&#9973; Accesso Valutazione</h2>
+    <div id="login-alert" class="alert alert-err"><span id="login-err"></span></div>
+    <div class="form-row"><label>Numero Turno (1-60)</label>
+      <input type="number" id="l-turno" min="1" max="60" placeholder="es. 5" oninput="checkPrimo()"></div>
+    <div class="form-row"><label>Tipo Corso</label>
+      <select id="l-corso" onchange="checkPrimo()">
+        <option value="">- Seleziona -</option>
+        <option value="ADV">ADV</option>
+        <option value="Istruttori1">Istruttori 1</option>
+        <option value="IstruttoriC3">Istruttori C3</option>
+      </select></div>
+    <div class="form-row"><label>Password Turno</label>
+      <input type="password" id="l-pwd" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doTurnoLogin()"></div>
+    <div class="primo-extra" id="primo-extra">
+      <p style="font-size:.81rem;color:#666;margin-bottom:10px;">Prima apertura: inserisci i dati per creare il turno.</p>
+      <div class="form-row"><label>Capo Turno</label><input type="text" id="l-capo" placeholder="Nome e Cognome"></div>
+      <div class="form-row"><label>Email Capo Turno</label><input type="email" id="l-email" placeholder="es. mario.rossi@email.it"></div>
+    </div>
+    <div style="margin-top:16px;padding:13px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;font-size:.75rem;color:#555;max-height:150px;overflow-y:auto;line-height:1.5;">
+      <strong style="color:var(--blu);font-size:.8rem;">Disclaimer sul trattamento dei dati personali</strong><br><br>
+      Ai sensi del Regolamento (UE) 2016/679, ogni utente dichiara di essere direttamente responsabile della licita, correttezza e pertinenza dei dati trattati. I dati devono essere utilizzati esclusivamente per finalita didattiche e organizzative del corso.
+    </div>
+    <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;">
+      <input type="checkbox" id="disclaimer-check" style="margin-top:2px;width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+      <label for="disclaimer-check" style="font-size:.8rem;color:#333;cursor:pointer;line-height:1.4;font-weight:normal;">Ho letto e accetto il disclaimer sul trattamento dei dati personali</label>
+    </div>
+    <div class="btn-row" style="justify-content:space-between;margin-top:16px;">
+      <button class="btn btn-success" onclick="doTurnoLogin()">Apri &rarr;</button>
+      <button class="btn btn-outline btn-sm" onclick="showPage('admin')">&#128274; Admin</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-home" class="page">
+  <div class="card">
+    <h2>Benvenuto &mdash; <span id="home-subtitle"></span></h2>
+    <p style="font-size:.86rem;color:#666;margin-bottom:20px;">Scegli la sezione su cui vuoi lavorare:</p>
+    <div class="home-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));max-width:700px;">
+      <div class="home-card" onclick="showPage('scheda',document.getElementById('nav-scheda'))">
+        <div class="icon">&#128203;</div>
+        <div class="title">Valutazione</div>
+        <div class="sub">Scheda di valutazione conclusiva con criteri pesati, semafori e punteggio totale</div>
+      </div>
+      <div class="home-card" onclick="showPage('operativo',document.getElementById('nav-op'))">
+        <div class="icon">&#128676;</div>
+        <div class="title">Operativo</div>
+        <div class="sub">Scheda obiettivi operativi pratici: vela, sicurezza, didattica, logistica</div>
+      </div>
+      <div class="home-card" onclick="showPage('resoconto',document.getElementById('nav-res'))">
+        <div class="icon">&#127942;</div>
+        <div class="title">Resoconto</div>
+        <div class="sub">Classifica allievi ordinata per punteggio finale con semafori sezioni</div>
+      </div>
+      <div class="home-card" onclick="showPage('giornaliero',document.getElementById('nav-giorn'))">
+        <div class="icon">&#128197;</div>
+        <div class="title">Giornaliero</div>
+        <div class="sub">Valutazione per sezione giorno per giorno G1&rarr;G7 con andamento progressivo</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-scheda" class="page">
+  <div class="card">
+    <h2>&#128203; <span id="scheda-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <div id="alert-ok" class="alert alert-ok">Salvato!</div>
+    <div id="alert-err" class="alert alert-err"><span id="err-msg"></span></div>
+    <div class="allievi-tabs" id="allievi-tabs"></div>
+    <div class="add-row">
+      <input type="text" id="nuovo-allievo" placeholder="Nome allievo..." onkeydown="if(event.key==='Enter')aggiungiAllievo()">
+      <button class="btn btn-outline btn-sm" onclick="aggiungiAllievo()">+ Aggiungi</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('excel-input').click()">&#128229; Importa Excel</button>
+      <button class="btn btn-outline btn-sm" onclick="esportaCSV('val')">CSV Valutazione</button>
+    </div>
+    <div id="allievo-content" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<div id="page-operativo" class="page">
+  <div class="card">
+    <h2>&#128676; <span id="op-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <p style="font-size:.8rem;color:#888;margin-bottom:10px;">Gli allievi si aggiungono dalla scheda Valutazione.</p>
+    <div class="allievi-tabs" id="allievi-tabs-op"></div>
+    <div id="allievo-op-content" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<div id="page-resoconto" class="page">
+  <div class="card">
+    <h2>&#127942; <span id="res-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <p style="font-size:.82rem;color:#666;margin-bottom:14px;">Classifica allievi ordinata per punteggio totale &mdash; aggiornata in tempo reale dai dati inseriti in Valutazione.</p>
+    <div id="resoconto-content">
+      <div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#127942;</div><p>Aggiungi allievi e inserisci valutazioni per vedere il resoconto.</p></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline btn-sm" onclick="esportaCSVResoconto()">&#128229; Esporta Resoconto CSV</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-giornaliero" class="page">
+  <div class="card">
+    <h2>&#128197; <span id="giorn-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <p style="font-size:.8rem;color:#888;margin-bottom:12px;">Seleziona il giorno e compila la valutazione per sezione. I dati si salvano automaticamente.</p>
+    <!-- Selettore giorni -->
+    <div class="giorn-days" id="giorn-days"></div>
+    <!-- Tabella valutazione giornaliera -->
+    <div style="overflow-x:auto;">
+      <table class="giorn-table" id="giorn-table">
+        <thead id="giorn-thead"></thead>
+        <tbody id="giorn-tbody"></tbody>
+      </table>
+    </div>
+    <!-- Progresso 7 giorni -->
+    <div class="progress-wrap" id="giorn-progress"></div>
+  </div>
+</div>
+
+<div id="page-admin" class="page">
+  <div id="admin-gate" class="card admin-gate">
+    <h2>&#128274; Accesso Admin</h2>
+    <input type="text" name="fakeuser" style="display:none;" aria-hidden="true">
+    <input type="password" id="admin-pwd" placeholder="Password admin" autocomplete="new-password" name="admin_pwd_field" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    <div class="btn-row" style="justify-content:center;margin-top:10px;">
+      <button class="btn btn-primary" onclick="doAdminLogin()">Accedi</button>
+      <button class="btn btn-outline btn-sm" onclick="showPage('login')">Indietro</button>
+    </div>
+    <div id="admin-err" style="color:var(--rosso);margin-top:8px;display:none;font-size:.84rem;">Password errata.</div>
+  </div>
+  <div id="admin-panel" style="display:none;">
+    <div class="card">
+      <h2>Statistiche <button class="btn btn-outline logout-btn" onclick="adminLogout()">Esci</button></h2>
+      <div class="stats-grid" id="stats-grid"></div>
+      <h3 style="color:var(--blu);margin:14px 0 6px;font-size:.88rem;">Turni e Password</h3>
+      <div style="overflow-x:auto;">
+        <table class="turni-table">
+          <thead><tr><th>Turno</th><th>Corso</th><th>Capo Turno</th><th>Email</th><th>Password</th><th>Soglia</th><th>Allievi</th><th></th></tr></thead>
+          <tbody id="turni-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Allievi e Valutazioni <span class="badge" id="count-badge">0</span></h2>
+      <div class="toolbar">
+        <input type="text" id="f-q" placeholder="Cerca allievo..." oninput="loadRiepilogo()">
+        <select id="f-corso" onchange="loadRiepilogo()">
+          <option value="">Tutti i corsi</option>
+          <option value="ADV">ADV</option>
+          <option value="Istruttori1">Istruttori 1</option>
+          <option value="IstruttoriC3">Istruttori C3</option>
+        </select>
+        <input type="number" id="f-turno" placeholder="N. turno" min="1" max="60" oninput="loadRiepilogo()" style="max-width:90px;">
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="riepilogo">
+          <thead><tr><th>Turno</th><th>Corso</th><th>Capo Turno</th><th>Allievo</th><th>Totale</th><th>Esito</th></tr></thead>
+          <tbody id="tab-body"><tr><td colspan="6" class="empty">Caricamento...</td></tr></tbody>
+        </table>
+      </div>
+      <div id="tab-spinner" class="spinner"></div>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="adminExportCSV()">Esporta CSV</button>
+        <button class="btn btn-outline" onclick="backupDB()">Backup DB</button>
+        <button class="btn btn-outline" onclick="document.getElementById('restore-input').click()">Restore DB</button>
+        <button class="btn btn-warning" style="padding:8px 18px;" onclick="cancellaFoto()">Cancella Foto</button>
+        <button class="btn btn-danger" style="padding:8px 18px;" onclick="resetDB()">Reset DB</button>
+      </div>
+      <input type="file" id="restore-input" accept=".json" style="display:none" onchange="restoreDB(this)">
+    </div>
+  </div>
+</div>
+</div>
+<script>
+const API='';
+const VOTI=['','Non svolto','Non Raggiunto','Da Affinare','Sufficiente','Buono','Ottimo'];
+const PESI_VOTI={'':0,'Non svolto':2,'Non Raggiunto':0,'Da Affinare':1,'Sufficiente':2,'Buono':3,'Ottimo':4};
+const VOTO_CLASS={'':'','Non svolto':'v-ns','Non Raggiunto':'v-nr','Da Affinare':'v-da','Sufficiente':'v-suf','Buono':'v-buo','Ottimo':'v-ott'};
+function getSoglia(){
+  // Usa la soglia del turno corrente (da sessione) se disponibile,
+  // altrimenti il default per corso
+  if(session && session.soglia !== undefined && session.soglia !== null)
+    return session.soglia;
+  return SOGLIE[session ? session.corso : ''] || null;
+}
+const CORSI_LABEL={ADV:'ADV',Istruttori1:'Istruttori 1',IstruttoriC3:'Istruttori C3'};
+const SOGLIE={ADV:null,Istruttori1:66,IstruttoriC3:66};
+
+const SCHEMA_ADV=[
+  {macro:'1. Navigazione a vela',items:[
+    {peso:2,desc:"E in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato"},
+    {peso:3,desc:"E in grado di eseguire le manovre fondamentali (gavitello, ancoraggio, regolazione e cambio velatura)"},
+    {peso:3,desc:"E in grado di eseguire le manovre fondamentali con metodo e consapevolezza (SN+VI)"},
+  ]},
+  {macro:'2. Mezzi e procedure di sicurezza',items:[
+    {peso:2,desc:"E in grado di preparare i mezzi di sicurezza e gestire il motore nel rispetto delle norme ambientali"},
+    {peso:3,desc:"E in grado di collaborare con l'istruttore durante le manovre di sicurezza (lancio cima, uso capra)"},
+    {peso:3,desc:"Si comporta coerentemente alle procedure di sicurezza, in mare e a terra"},
+  ]},
+  {macro:'3. Didattica alla lavagna e in mare',items:[
+    {peso:2,desc:"E in grado di comprendere le indicazioni didattiche del CT e fare da facilitatore agli allievi"},
+  ]},
+  {macro:'4. Capacita gestionale e lavoro in team',items:[
+    {peso:2,desc:"E in grado di supportare il gruppo istruttori sia a terra che in mare per il raggiungimento degli obiettivi"},
+    {peso:2,desc:"E disponibile ad accrescere la propria esperienza collaborando con il team istruttori AdV"},
+    {peso:1,desc:"Condivide e promuove le norme di comportamento (carta dei valori, inclusione, sostenibilita)"},
+  ]},
+  {macro:'5. Consapevolezza del ruolo - Motivazione, Impegno, Disponibilita',items:[
+    {peso:2,desc:"E consapevole di essere modello di riferimento a terra e a mare, coerente nei comportamenti"},
+    {peso:2,desc:"E in grado di mantenere la calma in situazioni di stress e incoraggia gli altri"},
+    {peso:2,desc:"E sempre un elemento proattivo su quello che c'e da fare, non si tira indietro o delega ad altri"},
+  ]},
+  {macro:'6. Capacita organizzative e aspetti logistici',items:[
+    {peso:2,desc:"E in grado di supportare e facilitare le attivita a mare (scalo, caletta, veleria) e a terra"},
+    {peso:1,desc:"E in grado di prevenire e risolvere piccole avarie coordinandosi con il suo CT e lo staff"},
+    {peso:1,desc:"Conosce le procedure di prevenzione (incendi e infortuni) ed emergenza a terra e a mare"},
+  ]},
+];
+const SCHEMA_IS1=[
+  {macro:'1. Navigazione a vela',items:[
+    {peso:2,desc:"Conduce con buona sicurezza e autonomia sia una deriva che un cabinato"},
+    {peso:3,desc:"Esegue costantemente tutte le manovre fondamentali garantendo la totale sicurezza dell'imbarcazione"},
+    {peso:3,desc:"Esegue tutte le manovre con metodo e cognizione di causa, con chiara via di fuga (SN+VI)"},
+  ]},
+  {macro:'2. Mezzi e procedure di sicurezza',items:[
+    {peso:2,desc:"Conduce ed esegue le manovre base in autonomia e sufficiente sicurezza con il gozzo e il gommone"},
+    {peso:3,desc:"Imposta manovre di avvicinamento e assistenza con metodo e cognizione di causa, via di fuga chiara"},
+    {peso:3,desc:"Mantiene il controllo del mezzo senza diventare pericoloso per se e per gli assistiti"},
+  ]},
+  {macro:'3. Didattica alla lavagna e in mare',items:[
+    {peso:3,desc:"Organizza i contenuti di un argomento individuandone i punti chiave con sufficiente conoscenza"},
+    {peso:3,desc:"Comunica con sufficiente efficacia i punti chiave, gestendo la lavagna con parole e disegni chiari"},
+    {peso:1,desc:"E in grado di valutare se l'obiettivo didattico e stato raggiunto"},
+  ]},
+  {macro:'4. Capacita gestionale e team - Organizzazione e Comunicazione',items:[
+    {peso:2,desc:"Lavora in team per il raggiungimento dell'obiettivo comune"},
+    {peso:2,desc:"Organizza, gestisce e comunica esercizi a mare secondo l'obiettivo e nei tempi stabiliti"},
+    {peso:1,desc:"E disponibile a condividere la propria esperienza nautica a disposizione del team"},
+  ]},
+  {macro:'5. Consapevolezza del ruolo - Responsabilita, Motivazione, Impegno',items:[
+    {peso:2,desc:"Crede nel ruolo dell'istruttore come modello, comprende le responsabilita e promuove la carta dei valori"},
+    {peso:2,desc:"Mantiene calma e lucidita sotto forte stress fisico/emotivo e la infonde negli altri"},
+    {peso:2,desc:"Gestisce consapevolmente le proprie risorse psicofisiche, e proattivo verso istruttori, allievi e staff"},
+  ]},
+  {macro:'6. Capacita organizzative e aspetti logistici',items:[
+    {peso:2,desc:"Gestisce e coordina attivita a mare (comandata mezzi, veleria, scalo, caletta) e a terra (cucina, orari)"},
+    {peso:1,desc:"Gestisce e indirizza le procedure per la manutenzione ordinaria e piccole avarie con i riferimenti staff"},
+    {peso:1,desc:"Conosce, promuove e segue le procedure di prevenzione ed emergenza a terra e a mare"},
+  ]},
+];
+const SCHEMA_C3=[
+  {macro:'1. Navigazione a vela',items:[
+    {peso:2,desc:"Conduce con buona sicurezza e autonomia un cabinato e il suo equipaggio anche in spazi ristretti"},
+    {peso:3,desc:"Esegue/fa eseguire costantemente tutte le manovre fondamentali del nuovo corso garantendo sicurezza totale"},
+    {peso:3,desc:"Esegue tutte le manovre con metodo e cognizione di causa, avendo sempre chiara la via di fuga (SN+VI)"},
+  ]},
+  {macro:'2. Procedure di sicurezza',items:[
+    {peso:2,desc:"Ha consapevolezza della presa in consegna dell'imbarcazione ed esegue le verifiche di sicurezza"},
+    {peso:3,desc:"Ha visione di spazio, tempo ed energie dell'equipaggio per eseguire rientri e ancoraggi in sicurezza"},
+    {peso:3,desc:"Mantiene il controllo del mezzo ad equipaggio ridotto senza diventare pericoloso"},
+  ]},
+  {macro:'3. Didattica alla lavagna e in mare',items:[
+    {peso:3,desc:"Organizza i contenuti ed esegue una lezione di 25 min, gestisce le domande difficili"},
+    {peso:2,desc:"Esegue lezioni a bordo con efficacia, spiega manovre, lascia sbagliare garantendo la sicurezza"},
+    {peso:2,desc:"Valuta il raggiungimento dell'obiettivo didattico, esegue debriefing con comunicazione positiva"},
+  ]},
+  {macro:'4. Capacita gestionale e team - Organizzazione e Comunicazione',items:[
+    {peso:2,desc:"Recepisce le nuove informazioni e riesce a lasciare andare vecchie abitudini non in linea con CVC"},
+    {peso:2,desc:"Organizza e comunica il programma della giornata, si coordina con il CT via VHF in navigazione di flotta"},
+    {peso:1,desc:"Riesce a lavorare in gruppo evitando assoli"},
+  ]},
+  {macro:'5. Consapevolezza del ruolo - Responsabilita, Motivazione, Impegno',items:[
+    {peso:2,desc:"E modello di riferimento, prevede le mancanze degli allievi, promuove la carta dei valori e l'inclusione"},
+    {peso:2,desc:"Mantiene calma e lucidita sotto forte stress fisico/emotivo e la infonde negli altri"},
+    {peso:2,desc:"E promotore come leader piuttosto che come persona al comando"},
+  ]},
+  {macro:'6. Capacita organizzative e aspetti logistici',items:[
+    {peso:2,desc:"Gestisce la comandata a bordo e si coordina con le altre imbarcazioni tenendo conto dell'impatto ambientale"},
+    {peso:1,desc:"Gestisce ed esegue piccole avarie (circuito trinca e 3D) comunicando efficacemente allo staff"},
+    {peso:1,desc:"Conosce, promuove e segue le procedure di presa in carico, monitoraggio e riconsegna della barca"},
+  ]},
+];
+const SCHEMAS={ADV:SCHEMA_ADV,Istruttori1:SCHEMA_IS1,IstruttoriC3:SCHEMA_C3};
+
+const OP_ADV=[
+  {macro:'1a. Condurre deriva/cabinato - Tecnica, Senso Nautico, Visione, Progressione',items:[
+    'Armo/disarmo imbarcazione','Adeguamento velatura, terzaroli, solo Fiocco/randa',
+    'Partenza e arrivo gavitello','Accosti barca alla fonda','Accosti in navigazione',
+    'Accosti in banchina','Barca ferma','MOB','Panna',
+    'Terminologia e gergo nautico','Riconoscimento perimetri navigazione/pilotaggio',
+  ]},
+  {macro:'1b. Condurre deriva in autonomia e sicurezza',items:[
+    'Scuffia e raddrizzamento','Navigazione solo fiocco / solo randa',
+    'Partenza e arrivo spiaggia','Navigazione senza timone',
+  ]},
+  {macro:'1c. Condurre cabinato in autonomia e sicurezza',items:[
+    'Quick stop','Navigazione solo fiocco / solo randa','Ormeggio e tonneggio',
+    'Rimorchio a vela','Ancoraggio','La carta nautica','Navigazione in flottiglia',
+  ]},
+  {macro:'2. Supporto mezzi e procedure di sicurezza',items:[
+    'Preparazione mezzi','Lancio cima','Collabora alle manovre di assistenza',
+  ]},
+  {macro:'3. Didattica alla lavagna e in mare',items:[
+    'E in grado di navigare in posizione di maggior sicurezza',
+    'E in grado di comunicare con gli istruttori e con la flotta',
+    "E in grado di ricondurre l'intera flotta all'esercizio proposto",
+  ]},
+  {macro:'4. Capacita gestionale e lavoro in team (AdV di giornata)',items:[
+    'Capacita di lavorare in team','Sa essere di esempio',"Favorisce l'inclusione e il rispetto",
+  ]},
+  {macro:'5. Consapevolezza del ruolo - Motivazione, Impegno, Disponibilita',items:[
+    'Motivazione','Impegno','Disponibilita',
+    'Gestisce le relazioni con rispetto, ottiene e da collaborazione e consenso degli altri',
+    'Attua le norme di vita in rispetto della sicurezza e prevenzione incidenti',
+  ]},
+  {macro:'6. Capacita organizzative e aspetti logistici (AdV di giornata)',items:[
+    'Gestione piccole manutenzioni e avarie','Gestione comandata','Gestione comandata base',
+    'Gestione scalo (avarie, efficienza barche, pulizia e ordine scalo)',
+    'Conosce il manuale AT per la gestione della cucina','Gestione caletta',
+  ]},
+];
+const OP_IS=[
+  {macro:'1. Navigazione a vela',items:[
+    'Scuffia e raddrizzamento','Partenza e arrivo gavitello','Partenza e arrivo spiaggia',
+    'Ormeggio e tonneggio','Ancoraggio (ancoraggio ganciato)','QUICK-Stop','MOB',
+    'Adeguamento velatura, terzaroli, solo Fiocco/randa','Accosti',
+    'Gestione assetti, propulsione e direzione','Navigazione in flottiglia','Rimorchio a vela',
+  ]},
+  {macro:'2. Mezzi e procedure di sicurezza',items:[
+    'M0-Gozzo - Preparazione mezzo e ormeggio/tonneggio (con e senza trappa)',
+    'M0-Gozzo fermo prua e poppa al vento','M0-Gozzo presa gavitello prua/poppa',
+    'M0-Gozzo 360 gradi (orario barra fissa)','M0-Gozzo - Accostare in banchina + trappa',
+    'M0-Gozzo uso cima rimorchio/capra','M1-Gozzo accosto barca in navigazione',
+    'M1-Gozzo accosto barca alla fonda','M1-Gozzo rimorchio in poppa',
+    'M1-Gozzo rimorchio in andana','M1-Gozzo ancoraggio',
+    'M2-Gozzo assistenza e raddr. scuf 90','M2-Gozzo assistenza e raddr. scuf 180 albero piantato',
+    'M2-Gozzo assistenza barca a scogli anche sottovento','M2-Gozzo Recupero UAM',
+    'G1-Gommone presa gavitello prua/poppa','G2-Gommone accosto barca in navigazione/fonda',
+    'G3-Gommone Recupero UAM','G4-Traino barca in andana',
+  ]},
+  {macro:'3. Didattica alla lavagna e in mare',items:[
+    'Individuare e organizzare sulla lavagna i punti chiave della lezione',
+    'Corretto uso dello spazio della lavagna (titolo, parole chiave, colori, grandezza carattere)',
+    "Chiarezza vocale dell'esposizione alla lavagna","Chiarezza grafica dell'esposizione alla lavagna",
+    "Feed back - Capacita di mantenere attiva l'attenzione",
+    "Conseguente all'esercizio e in grado di posizionare boe per eseguirlo",
+    'Gestione della didattica a bordo derive/cabinato e debrief dopo la manovra',
+  ]},
+  {macro:'4. Capacita gestionale e lavoro in team (istruttore di giornata)',items:[
+    'E coerente, rappresenta un modello da seguire',
+    'Disinnescare momenti di confronto non necessari',
+    "Favorisce l'inclusione e la creazione dell'equipaggio",
+  ]},
+  {macro:'5. Consapevolezza del ruolo - Motivazione, Impegno, Disponibilita',items:[
+    "Ha sempre dotazioni sicurezza e l'abbigliamento adeguato",
+    'Si comporta in modo da essere sempre un riferimento',
+    'Comprende il suo livello energetico, e in grado di gestire le proprie risorse',
+    'Riconosce quando e in difficolta o non sa','Mostra un atteggiamento proattivo',
+  ]},
+  {macro:'6. Capacita organizzative e aspetti logistici (istruttore di giornata)',items:[
+    'Gestisce la comandata a terra','Gestisce lo scalo/veleria/caletta',
+    'Gestisce e coordina ormeggio, sgotto, rabbocco mezzi sicurezza',
+    'E in grado di comunicare con lo staff per gestire avarie straordinarie',
+    'Conosce le procedure di prevenzione e gestione emergenze sanitarie',
+    'Conosce le procedure antincendio e i punti di raccolta',
+    'E consapevole degli interruttori di servizio principali delle basi',
+    'Conosce le procedure della cucina',
+  ]},
+];
+const OP_SCHEMAS={ADV:OP_ADV,Istruttori1:OP_IS,IstruttoriC3:OP_IS};
+
+let session=null,adminToken=null,allievi=[],currentAllievo=null,currentAllievoOp=null,fotoUploadId=null;
+function saveSession(s){session=s;sessionStorage.setItem('cvc_is',JSON.stringify(s));}
+function loadSession(){try{return JSON.parse(sessionStorage.getItem('cvc_is')||'null');}catch{return null;}}
+async function fetchAuth(url,opts={}){const res=await fetch(url,opts);if(res.status===401&&session){doLogout();return null;}return res;}
+
+async function init(){
+  const saved=loadSession();
+  if(saved){const res=await fetch(API+'/api/verify',{headers:{'X-Auth-Token':saved.token}});if(res.ok){session=saved;await enterApp();return;}sessionStorage.clear();}
+  showPage('login');
+}
+
+async function enterApp(){
+  document.getElementById('main-nav').style.display='flex';
+  const label=CORSI_LABEL[session.corso]||session.corso;
+  document.getElementById('hdr-info').innerHTML='T<strong>'+session.turno+'</strong> &nbsp;'+session.capoturno+' &nbsp;<span class="tag">'+label+'</span>';
+  document.getElementById('home-subtitle').textContent='Turno '+session.turno+' - '+session.capoturno+' - '+label;
+  document.getElementById('scheda-subtitle').textContent='Valutazione - Turno '+session.turno+' - '+label;
+  document.getElementById('op-subtitle').textContent='Operativo - Turno '+session.turno+' - '+label;
+  document.getElementById('res-subtitle').textContent='Resoconto - Turno '+session.turno+' - '+label;
+  document.getElementById('giorn-subtitle').textContent='Giornaliero - Turno '+session.turno+' - '+label;
+  showPage('home');
+  await caricaAllievi();
+}
+
+let primoAccesso=false;
+async function checkPrimo(){
+  const n=parseInt(document.getElementById('l-turno').value);
+  const corso=document.getElementById('l-corso').value;
+  document.getElementById('primo-extra').classList.remove('show');primoAccesso=false;
+  if(!n||n<1||n>60||!corso)return;
+  try{const res=await fetch(API+'/api/turno/'+n+'/exists?corso='+encodeURIComponent(corso));const d=await res.json();if(!d.exists){primoAccesso=true;document.getElementById('primo-extra').classList.add('show');}}catch{}
+}
+
+async function doTurnoLogin(){
+  document.getElementById('login-alert').classList.remove('show');
+  if(!document.getElementById('disclaimer-check').checked){showLoginErr('Devi accettare il disclaimer per continuare.');return;}
+  const numero=parseInt(document.getElementById('l-turno').value);
+  const pwd=document.getElementById('l-pwd').value.trim();
+  const corso=document.getElementById('l-corso').value;
+  if(!numero||!pwd){showLoginErr('Inserisci numero turno e password.');return;}
+  if(!corso){showLoginErr('Seleziona il tipo di corso.');return;}
+  const payload={numero,password:pwd,corso};
+  if(primoAccesso){payload.capoturno=document.getElementById('l-capo').value.trim();payload.email=document.getElementById('l-email').value.trim();if(!payload.capoturno){showLoginErr('Inserisci il Capo Turno.');return;}}
+  try{
+    const res=await fetch(API+'/api/turno/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await res.json();
+    if(!res.ok){if(d.primo_accesso){primoAccesso=true;document.getElementById('primo-extra').classList.add('show');}showLoginErr(d.error||'Errore');return;}
+    saveSession(d);await enterApp();
+  }catch{showLoginErr('Errore di connessione.');}
+}
+function showLoginErr(m){document.getElementById('login-err').textContent=m;document.getElementById('login-alert').classList.add('show');}
+function doLogout(){session=null;adminToken=null;sessionStorage.removeItem('cvc_is');allievi=[];currentAllievo=null;currentAllievoOp=null;document.getElementById('main-nav').style.display='none';document.getElementById('hdr-info').textContent='';document.getElementById('allievi-tabs').innerHTML='';document.getElementById('allievi-tabs-op').innerHTML='';document.getElementById('allievo-content').innerHTML='';document.getElementById('allievo-op-content').innerHTML='';showPage('login');}
+
+async function caricaAllievi(){
+  if(!session)return;
+  try{
+    const res=await fetchAuth(API+'/api/allievi/'+session.turno+'?corso='+encodeURIComponent(session.corso),{headers:{'X-Auth-Token':session.token}});
+    if(!res)return;const d=await res.json();allievi=d.allievi||[];
+    if(allievi.length){if(!currentAllievo)currentAllievo=allievi[0].id;if(!currentAllievoOp)currentAllievoOp=allievi[0].id;}
+    renderAllievi();renderAllievoOp();
+  }catch{}
+}
+
+function renderAllievi(){
+  document.getElementById('allievi-tabs').innerHTML=allievi.map(a=>'<div class="allievo-tab '+(a.id===currentAllievo?'active':'')+'" onclick="selectAllievo('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'')+escH(a.nome)+'<button class="del-x" onclick="event.stopPropagation();eliminaAllievo('+a.id+')">x</button></div>').join('');
+  document.getElementById('allievi-tabs-op').innerHTML=allievi.map(a=>'<div class="allievo-tab '+(a.id===currentAllievoOp?'active':'')+'" onclick="selectAllievoOp('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'')+escH(a.nome)+'</div>').join('');
+  if(currentAllievo)renderAllievoContent();
+  else document.getElementById('allievo-content').innerHTML='<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#128100;</div><p>Aggiungi un allievo per iniziare</p></div>';
+}
+function selectAllievo(id){currentAllievo=id;renderAllievi();}
+function selectAllievoOp(id){currentAllievoOp=id;renderAllievoOp();}
+
+async function aggiungiAllievo(){
+  const inp=document.getElementById('nuovo-allievo');const nome=inp.value.trim();if(!nome)return;
+  if(allievi.find(a=>a.nome===nome)){alert('Allievo gia presente.');return;}
+  try{
+    const res=await fetchAuth(API+'/api/allievi/'+session.turno,{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},body:JSON.stringify({corso:session.corso,nome})});
+    if(!res)return;const d=await res.json();if(!res.ok){alert(d.error||'Errore');return;}
+    allievi.push({id:d.id,nome,foto_url:null,note:'',grades:{},op_grades:{}});
+    currentAllievo=d.id;if(!currentAllievoOp)currentAllievoOp=d.id;
+    inp.value='';renderAllievi();
+  }catch(e){alert('Errore: '+e.message);}
+}
+async function eliminaAllievo(id){
+  const a=allievi.find(x=>x.id===id);if(!confirm('Rimuovere '+a.nome+'?'))return;
+  try{
+    const res=await fetchAuth(API+'/api/allievi/'+id,{method:'DELETE',headers:{'X-Auth-Token':session.token}});
+    if(!res)return;allievi=allievi.filter(x=>x.id!==id);
+    if(currentAllievo===id)currentAllievo=allievi.length?allievi[0].id:null;
+    if(currentAllievoOp===id)currentAllievoOp=allievi.length?allievi[0].id:null;
+    renderAllievi();renderAllievoOp();
+  }catch(e){alert('Errore: '+e.message);}
+}
+
+function renderAllievoContent(){
+  const a=allievi.find(x=>x.id===currentAllievo);if(!a){document.getElementById('allievo-content').innerHTML='';return;}
+  const schema=SCHEMAS[session.corso]||[];const soglia=getSoglia();const hasSoglia=soglia!==null;
+  let html='<div class="foto-box"><div class="foto-circle" id="foto-circle-'+a.id+'" onclick="apriUploadFoto('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'&#128100;')+'</div><div class="foto-info"><strong>'+escH(a.nome)+'</strong>'+(CORSI_LABEL[session.corso]||session.corso)+' &mdash; Turno '+session.turno+'</div><span class="foto-label" onclick="apriUploadFoto('+a.id+')">&#128247; Foto</span></div>';
+  html+='<div class="note-box"><label>&#128221; Blocco Note &mdash; '+escH(a.nome)+'</label><textarea id="note-'+a.id+'" placeholder="Annotazioni, osservazioni, punti di forza e di debolezza..." onchange="salvaNote('+a.id+',this.value)">'+escH(a.note||'')+'</textarea></div>';
+  if(hasSoglia)html+='<div class="np-warn" id="np-warn-'+a.id+'"></div>';
+  let rows='';
+  schema.forEach(function(sec,si){
+    rows+='<tr class="macro-row"><td colspan="3"><strong>'+sec.macro+'</strong></td></tr>';
+    sec.items.forEach(function(item,ci){
+      const vkey='v_'+si+'_'+ci;const val=a.grades[vkey]||'';
+      rows+='<tr><td style="font-size:.8rem;color:#444;line-height:1.5;max-width:420px;">'+item.desc+'</td><td style="text-align:center;"><span class="peso-badge">Peso '+item.peso+'</span></td><td><select class="voto-sel '+(VOTO_CLASS[val]||'')+'" id="sel-'+a.id+'-'+vkey+'" onchange="setGrade('+a.id+',\''+vkey+'\',this.value)">'+VOTI.map(function(v){return'<option value="'+v+'"'+(v===val?' selected':'')+'>'+( v||'- scegli -')+'</option>';}).join('')+'</select></td></tr>';
+    });
+    const media=calcSectionMedia(schema,si,a.grades);
+    rows+='<tr class="semaforo-row"><td colspan="2">&#128992; Semaforo &mdash; <em>'+sec.macro+'</em></td><td id="sem-'+a.id+'-'+si+'">'+semBadge(getSem(media))+'</td></tr>';
+  });
+  const tot=calcTotal(schema,a.grades);
+  const nonProm=soglia?isNonPromosso(schema,a.grades,soglia,session.corso):null;
+  const passClass=nonProm===null?'':(nonProm?'fail':'pass');
+  const passLbl=nonProm===null?(soglia?'da valutare':'punti'):(nonProm?'&#10007; Non Promosso':'&#10003; Promosso');
+  rows+='<tr class="total-row"><td colspan="2">Totale complessivo valutazione allievo</td><td><div class="score-box '+passClass+'" id="score-'+a.id+'"><span class="sval">'+tot+'</span><span class="slbl">'+passLbl+(soglia&&nonProm!==null?' (min. '+soglia+')':'')+'</span></div></td></tr>';
+  html+='<div style="overflow-x:auto;"><table class="eval-table"><thead><tr><th>Criterio di Valutazione</th><th class="center" style="width:80px">Peso</th><th style="width:155px">Valutazione</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  document.getElementById('allievo-content').innerHTML=html;
+  checkNpWarn(a);
+}
+
+function setGrade(aid,vkey,value){
+  const a=allievi.find(x=>x.id===aid);if(!a)return;if(!a.grades)a.grades={};a.grades[vkey]=value;
+  const sel=document.getElementById('sel-'+aid+'-'+vkey);if(sel)sel.className='voto-sel '+(VOTO_CLASS[value]||'');
+  updateSemAndScore(a);autoSave(aid,'val',Object.fromEntries([[vkey,value]]));
+}
+function isNonPromosso(schema, grades, soglia, corso){
+  // Se non c'è nessun voto inserito, stato sconosciuto (null = non mostrare esito)
+  var hasAny=Object.keys(grades).some(function(k){return k.startsWith('v_')&&(grades[k]||'').trim()!=='';});
+  if(!hasAny) return null;
+
+  // ── CONTROLLO 1: sezioni 1 e 2 entrambe insufficienti (rosse o gialle) ──
+  // Indipendente dal punteggio — basta che entrambe siano non-verdi
+  if(corso==='Istruttori1'||corso==='IstruttoriC3'){
+    var has0=schema[0].items.some(function(_,ci){return (grades['v_0_'+ci]||'').trim()!=='';});
+    var has1=schema[1].items.some(function(_,ci){return (grades['v_1_'+ci]||'').trim()!=='';});
+    if(has0 && has1){
+      var m0=calcSectionMedia(schema,0,grades);
+      var m1=calcSectionMedia(schema,1,grades);
+      // Entrambe non-verdi (rosso o giallo) = non promosso, indipendentemente dagli altri punteggi
+      if(getSem(m0)!=='v' && getSem(m1)!=='v') return true;
+    }
+  }
+
+  // ── CONTROLLO 2: punteggio totale sotto soglia ──
+  if(soglia && calcTotal(schema,grades)<soglia) return true;
+
+  return false;
+}
+
+function updateSemAndScore(a){
+  const schema=SCHEMAS[session.corso]||[];const soglia=getSoglia();
+  schema.forEach(function(_,si){const media=calcSectionMedia(schema,si,a.grades);const el=document.getElementById('sem-'+a.id+'-'+si);if(el)el.innerHTML=semBadge(getSem(media));});
+  const tot=calcTotal(schema,a.grades);const el=document.getElementById('score-'+a.id);
+  if(el){
+    const nonProm=soglia?isNonPromosso(schema,a.grades,soglia,session.corso):null;
+    const passClass=nonProm===null?'':(nonProm?'fail':'pass');
+    const passLbl=nonProm===null?(soglia?'da valutare':'punti'):(nonProm?'&#10007; Non Promosso':'&#10003; Promosso');
+    el.className='score-box '+passClass;
+    el.querySelector('.sval').textContent=tot;
+    el.querySelector('.slbl').innerHTML=passLbl+(soglia&&nonProm!==null?' (min. '+soglia+')':'');
+  }
+  checkNpWarn(a);
+}
+function checkNpWarn(a){
+  const el=document.getElementById('np-warn-'+a.id);if(!el)return;
+  const schema=SCHEMAS[session.corso]||[];
+  const soglia=getSoglia();
+
+  // Controlla se ci sono voti inseriti
+  var hasAny=Object.keys(a.grades||{}).some(function(k){return k.startsWith('v_')&&(a.grades[k]||'').trim()!=='';});
+  if(!hasAny){el.classList.remove('show');return;}
+
+  // ── CONTROLLO 1: sezioni 1 e 2 entrambe insufficienti ──
+  var has0=schema[0].items.some(function(_,ci){return (a.grades['v_0_'+ci]||'').trim()!=='';});
+  var has1=schema[1].items.some(function(_,ci){return (a.grades['v_1_'+ci]||'').trim()!=='';});
+  var sez12fail=false;
+  if(has0&&has1){
+    var m0=calcSectionMedia(schema,0,a.grades);
+    var m1=calcSectionMedia(schema,1,a.grades);
+    sez12fail=(getSem(m0)!=='v'&&getSem(m1)!=='v');
+  }
+
+  // ── CONTROLLO 2: punteggio sotto soglia ──
+  var tot=calcTotal(schema,a.grades||{});
+  var ptsfail=soglia&&tot<soglia;
+
+  if(sez12fail||ptsfail){
+    var motivi=[];
+    if(sez12fail) motivi.push('Navigazione e Sicurezza entrambe insufficienti');
+    if(ptsfail)   motivi.push('Punteggio '+tot+' sotto la soglia di '+soglia);
+    el.innerHTML='&#9888; ALLIEVO NON PROMOSSO &mdash; '+motivi.join(' &nbsp;|&nbsp; ');
+    el.classList.add('show');
+  }else{
+    el.classList.remove('show');
+  }
+}
+
+function renderAllievoOp(){
+  const a=allievi.find(x=>x.id===currentAllievoOp);
+  if(!a){document.getElementById('allievo-op-content').innerHTML='<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#128100;</div><p>Nessun allievo selezionato</p></div>';return;}
+  const opSchema=OP_SCHEMAS[session.corso]||[];if(!a.op_grades)a.op_grades={};
+  let html='<div class="foto-box"><div class="foto-circle" id="foto-circle-op-'+a.id+'" onclick="apriUploadFoto('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'&#128100;')+'</div><div class="foto-info"><strong>'+escH(a.nome)+'</strong>Scheda Operativa &mdash; '+(CORSI_LABEL[session.corso]||session.corso)+'</div><span class="foto-label" onclick="apriUploadFoto('+a.id+')">&#128247; Foto</span></div>';
+  html+='<div class="note-box"><label>&#128221; Note Operative &mdash; '+escH(a.nome)+'</label><textarea id="note-op-'+a.id+'" placeholder="Annotazioni sugli obiettivi operativi..." onchange="salvaNote('+a.id+',this.value)">'+escH(a.note||'')+'</textarea></div>';
+  let rows='';
+  opSchema.forEach(function(sec,si){
+    rows+='<tr class="op-macro"><td colspan="2"><strong>'+sec.macro+'</strong></td></tr>';
+    sec.items.forEach(function(item,ci){
+      const vkey='op_'+si+'_'+ci;const val=a.op_grades[vkey]||'';
+      rows+='<tr><td style="font-size:.82rem;color:#444;">'+item+'</td><td style="width:155px;"><select class="voto-sel '+(VOTO_CLASS[val]||'')+'" id="opsel-'+a.id+'-'+vkey+'" onchange="setOpGrade('+a.id+',\''+vkey+'\',this.value)">'+VOTI.map(function(v){return'<option value="'+v+'"'+(v===val?' selected':'')+'>'+( v||'- scegli -')+'</option>';}).join('')+'</select></td></tr>';
+    });
+  });
+  html+='<div style="overflow-x:auto;"><table class="op-table"><thead><tr><th>Obiettivo Operativo</th><th style="width:155px">Valutazione</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  html+='<div class="btn-row"><button class="btn btn-outline btn-sm" onclick="esportaCSV(\'op\')">CSV Operativo</button></div>';
+  document.getElementById('allievo-op-content').innerHTML=html;
+}
+function setOpGrade(aid,vkey,value){
+  const a=allievi.find(x=>x.id===aid);if(!a)return;if(!a.op_grades)a.op_grades={};a.op_grades[vkey]=value;
+  const sel=document.getElementById('opsel-'+aid+'-'+vkey);if(sel)sel.className='voto-sel '+(VOTO_CLASS[value]||'');
+  autoSave(aid,'op',Object.fromEntries([[vkey,value]]));
+}
+
+// CALCOLI SEMAFORO CORRETTI
+// Basati sulla media ponderata: somma(voto*peso) / somma(pesi)
+// VERDE: media >= 2 (Sufficiente)
+// GIALLO: 1 <= media < 2 (Da Affinare)
+// ROSSO: media < 1 (Non Raggiunto)
+function calcSectionMedia(schema,si,grades){
+  const sec=schema[si];let totPond=0,sumPesi=0;
+  sec.items.forEach(function(item,ci){const voto=((grades['v_'+si+'_'+ci])||'').trim();totPond+=(PESI_VOTI[voto]||0)*item.peso;sumPesi+=item.peso;});
+  return sumPesi>0?totPond/sumPesi:0;
+}
+function calcTotal(schema,grades){
+  let t=0;schema.forEach(function(sec,si){sec.items.forEach(function(item,ci){const voto=((grades['v_'+si+'_'+ci])||'').trim();t+=(PESI_VOTI[voto]||0)*item.peso;});});return t;
+}
+function getSem(media){if(media>=2)return'v';if(media>=1)return'g';return'r';}
+function semBadge(s){
+  if(s==='v')return'<span class="sem-badge sem-v">&#128994; Verde - Sufficiente o superiore</span>';
+  if(s==='g')return'<span class="sem-badge sem-g">&#128993; Giallo - Da Affinare</span>';
+  return'<span class="sem-badge sem-r">&#128308; Rosso - Non Raggiunto</span>';
+}
+
+let saveTimers={};
+function autoSave(aid,tipo,grades){
+  const key=aid+'_'+tipo;clearTimeout(saveTimers[key]);
+  saveTimers[key]=setTimeout(async function(){
+    try{const url=tipo==='val'?API+'/api/valutazioni/'+aid:API+'/api/valutazioni-op/'+aid;await fetchAuth(url,{method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},body:JSON.stringify({grades})});showToast();}catch{}
+  },800);
+}
+function showToast(){const t=document.getElementById('save-toast');t.classList.add('show');clearTimeout(t._timer);t._timer=setTimeout(function(){t.classList.remove('show');},1800);}
+let noteTimers={};
+function salvaNote(aid,value){
+  const a=allievi.find(x=>x.id===aid);if(a)a.note=value;clearTimeout(noteTimers[aid]);
+  noteTimers[aid]=setTimeout(async function(){try{await fetchAuth(API+'/api/allievi/'+aid+'/note',{method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},body:JSON.stringify({note:value})});showToast();}catch{}},1000);
+}
+
+function apriUploadFoto(id){if(!session.fotoAbilitata){alert('Caricamento foto non abilitato.\nUsa la password speciale foto.');return;}fotoUploadId=id;document.getElementById('foto-input').click();}
+async function uploadFoto(input){
+  const file=input.files[0];if(!file)return;const id=fotoUploadId;if(!id||!session){input.value='';return;}
+  const formData=new FormData();formData.append('foto',file);
+  try{
+    const res=await fetch(API+'/api/foto/'+id,{method:'POST',headers:{'X-Auth-Token':session.token},body:formData});
+    const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore upload');
+    const a=allievi.find(x=>x.id===id);if(a)a.foto_url=d.foto_url;
+    ['foto-circle-'+id,'foto-circle-op-'+id].forEach(function(cid){const el=document.getElementById(cid);if(el)el.innerHTML='<img src="'+d.foto_url+'?t='+Date.now()+'" alt="">';});
+    renderAllievi();renderAllievoOp();
+  }catch(e){alert('Errore upload foto: '+e.message);}
+  input.value='';
+}
+
+function esportaCSV(tipo){
+  if(!allievi.length){alert('Nessun allievo da esportare.');return;}
+  let csv='\uFEFF';
+  if(tipo==='val'){
+    const schema=SCHEMAS[session.corso]||[];csv+='Allievo,Sezione,Criterio,Peso,Voto,Totale\n';
+    allievi.forEach(function(a){const tot=calcTotal(schema,a.grades||{});schema.forEach(function(sec,si){sec.items.forEach(function(item,ci){const voto=(a.grades||{})['v_'+si+'_'+ci]||'';csv+='"'+a.nome+'","'+sec.macro+'","'+item.desc.replace(/"/g,'""')+'",'+item.peso+',"'+voto+'",'+tot+'\n';});});});
+  }else{
+    const opSchema=OP_SCHEMAS[session.corso]||[];csv+='Allievo,Sezione,Obiettivo,Voto\n';
+    allievi.forEach(function(a){opSchema.forEach(function(sec,si){sec.items.forEach(function(item,ci){const voto=(a.op_grades||{})['op_'+si+'_'+ci]||'';csv+='"'+a.nome+'","'+sec.macro+'","'+item.replace(/"/g,'""')+'","'+voto+'"\n';});});});
+  }
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download='CVC_T'+session.turno+'_'+session.corso+'_'+tipo+'_'+new Date().toISOString().slice(0,10)+'.csv';link.click();URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════
+// GIORNALIERO
+// ══════════════════════════════════════════════════
+var giornCorrente=1;
+var DAY_COLORS_G=['#2E75B6','#375623','#7B5C00','#7030A0','#C00000','#006B6B','#8B3A00'];
+var SEZIONI_BREVI=['Navigazione','Sicurezza','Didattica','Team','Ruolo','Logistica'];
+
+function getGiornIndex(){
+  // Calcola il giorno corrente del corso in base alla data (solo suggerimento)
+  return giornCorrente;
+}
+
+function setGiornCorrente(g){
+  giornCorrente=g;
+  document.querySelectorAll('.giorn-day-btn').forEach(function(b){
+    b.classList.toggle('active',parseInt(b.dataset.g)===g);
+  });
+  renderGiornTable();
+}
+
+function renderGiornaliero(){
+  if(!allievi.length){
+    document.getElementById('giorn-days').innerHTML='';
+    document.getElementById('giorn-thead').innerHTML='';
+    document.getElementById('giorn-tbody').innerHTML='<tr><td colspan="10" class="empty" style="text-align:center;padding:32px;color:#aaa;">Aggiungi allievi dalla scheda Valutazione</td></tr>';
+    document.getElementById('giorn-progress').innerHTML='';
+    return;
+  }
+  renderGiornDays();
+  renderGiornTable();
+  renderGiornProgress();
+}
+
+function renderGiornDays(){
+  var html='';
+  for(var g=1;g<=7;g++){
+    // Controlla se ci sono dati per questo giorno
+    var hasDati=allievi.some(function(a){
+      var giorn=a.giorn||{};
+      return Object.keys(giorn).some(function(k){return k.startsWith(g+'_')&&giorn[k].valore;});
+    });
+    html+='<button class="giorn-day-btn'+(g===giornCorrente?' active':'')+(hasDati?' has-data':'')+'" '
+      +'data-g="'+g+'" onclick="setGiornCorrente('+g+')" '
+      +'style="'+(hasDati?'border-color:'+DAY_COLORS_G[g-1]+';':'')+(g===giornCorrente?'background:'+DAY_COLORS_G[g-1]+';border-color:'+DAY_COLORS_G[g-1]+';':'')+'">'
+      +'G'+g
+      +(hasDati?' ✓':'')
+      +'</button>';
+  }
+  document.getElementById('giorn-days').innerHTML=html;
+}
+
+function renderGiornTable(){
+  var g=giornCorrente;
+  var colBg=DAY_COLORS_G[g-1];
+
+  // Header
+  var thead='<tr><th class="nome-th" style="background:'+colBg+';">Allievo</th>';
+  SEZIONI_BREVI.forEach(function(s){
+    thead+='<th style="background:'+colBg+';min-width:110px;">'+s+'</th>';
+  });
+  thead+='<th style="background:'+colBg+';min-width:130px;">Nota G'+g+'</th></tr>';
+  document.getElementById('giorn-thead').innerHTML=thead;
+
+  // Rows
+  var tbody='';
+  allievi.forEach(function(a){
+    tbody+='<tr>';
+    tbody+='<td class="nome-td">'
+      +(a.foto_url?'<img src="'+a.foto_url+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;" alt="">':'')
+      +escH(a.nome)+'</td>';
+
+    // 6 sezioni
+    for(var si=0;si<6;si++){
+      var key=g+'_'+si;
+      var entry=(a.giorn||{})[key]||{};
+      var val=entry.valore||'';
+      var vc=VOTO_CLASS[val]||'';
+      tbody+='<td>'
+        +'<select class="giorn-sel '+vc+'" '
+          +'onchange="setGiornGrade('+a.id+','+g+','+si+',this.value,this)">'
+        +VOTI.map(function(v){return'<option value="'+v+'"'+(v===val?' selected':'')+'>'+( v||'- -')+'</option>';}).join('')
+        +'</select></td>';
+    }
+
+    // Nota giorno — usa sezione 6 come chiave speciale per la nota
+    var notaKey=g+'_nota';
+    var notaVal=(a.giorn||{})[notaKey]||{};
+    var nota=notaVal.nota||notaVal.valore||'';
+    tbody+='<td>'
+      +'<textarea class="nota-giorn" rows="2" placeholder="Note..." '
+        +'onchange="setGiornNota('+a.id+','+g+',this.value)">'
+      +escH(nota)+'</textarea></td>';
+
+    tbody+='</tr>';
+  });
+  document.getElementById('giorn-tbody').innerHTML=tbody;
+}
+
+function renderGiornProgress(){
+  if(!allievi.length){document.getElementById('giorn-progress').innerHTML='';return;}
+  var schema=SCHEMAS[session.corso]||[];
+
+  var html='<h3 style="color:var(--blu);font-size:.88rem;margin-bottom:10px;margin-top:4px;">📈 Andamento 7 giorni</h3>'
+    +'<div style="overflow-x:auto;"><table class="prog-table">'
+    +'<thead><tr><th class="nome-th">Allievo</th>';
+  for(var g=1;g<=7;g++){
+    html+='<th style="background:'+DAY_COLORS_G[g-1]+';">G'+g+'</th>';
+  }
+  html+='<th style="background:var(--blu);">Trend</th></tr></thead><tbody>';
+
+  allievi.forEach(function(a){
+    html+='<tr><td class="nome-td">'
+      +(a.foto_url?'<img src="'+a.foto_url+'" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px;" alt="">':'')
+      +escH(a.nome)+'</td>';
+
+    var punteggi=[];
+    for(var g=1;g<=7;g++){
+      var totG=0; var nVoti=0;
+      for(var si=0;si<6;si++){
+        var key=g+'_'+si;
+        var val=((a.giorn||{})[key]||{}).valore||'';
+        if(val){totG+=(PESI_VOTI[val]||0);nVoti++;}
+      }
+      var media=nVoti>0?totG/nVoti:null;
+      punteggi.push(media);
+      var cls=media===null?'p-0':(media>=2?'p-v':(media>=1?'p-g':'p-r'));
+      var lbl=media===null?'—':(media>=2?'S':(media>=1?'D':'N'));
+      html+='<td><span class="prog-dot '+cls+'" title="Media: '+(media!==null?media.toFixed(1):'—')+'">'+lbl+'</span></td>';
+    }
+
+    // Trend: confronta primo e ultimo giorno con dati
+    var validi=punteggi.filter(function(p){return p!==null;});
+    var trend='flat'; var trendLbl='→';
+    if(validi.length>=2){
+      var diff=validi[validi.length-1]-validi[0];
+      if(diff>0.3){trend='up';trendLbl='↑';}
+      else if(diff<-0.3){trend='down';trendLbl='↓';}
+    }
+    html+='<td><span class="prog-trend '+trend+'">'+trendLbl+'</span></td>';
+    html+='</tr>';
+  });
+
+  html+='</tbody></table></div>'
+    +'<div style="margin-top:8px;font-size:.75rem;color:#888;display:flex;gap:16px;">'
+    +'<span><span class="prog-dot p-v" style="width:16px;height:16px;line-height:16px;font-size:.6rem;">S</span> Verde = Sufficiente+</span>'
+    +'<span><span class="prog-dot p-g" style="width:16px;height:16px;line-height:16px;font-size:.6rem;">D</span> Giallo = Da Affinare</span>'
+    +'<span><span class="prog-dot p-r" style="width:16px;height:16px;line-height:16px;font-size:.6rem;">N</span> Rosso = Non Raggiunto</span>'
+    +'</div>';
+  document.getElementById('giorn-progress').innerHTML=html;
+}
+
+var giornTimers={};
+function setGiornGrade(aid,giorno,sezione,value,sel){
+  // Aggiorna colore select
+  sel.className='giorn-sel '+(VOTO_CLASS[value]||'');
+  // Aggiorna stato locale
+  var a=allievi.find(function(x){return x.id===aid;});
+  if(!a)return;
+  if(!a.giorn)a.giorn={};
+  var key=giorno+'_'+sezione;
+  if(!a.giorn[key])a.giorn[key]={};
+  a.giorn[key].valore=value;
+  // Auto-save
+  var tk='g_'+aid+'_'+giorno+'_'+sezione;
+  clearTimeout(giornTimers[tk]);
+  giornTimers[tk]=setTimeout(async function(){
+    try{
+      await fetchAuth(API+'/api/giornaliero/'+aid,{
+        method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
+        body:JSON.stringify({giorno:giorno,sezione:sezione,valore:value,nota:''})
+      });
+      showToast();
+      renderGiornDays();
+      renderGiornProgress();
+    }catch{}
+  },600);
+}
+
+function setGiornNota(aid,giorno,value){
+  var a=allievi.find(function(x){return x.id===aid;});
+  if(!a)return;
+  if(!a.giorn)a.giorn={};
+  var key=giorno+'_nota';
+  if(!a.giorn[key])a.giorn[key]={};
+  a.giorn[key].nota=value;
+  var tk='gn_'+aid+'_'+giorno;
+  clearTimeout(giornTimers[tk]);
+  giornTimers[tk]=setTimeout(async function(){
+    try{
+      // Salva la nota come sezione 99 (valore speciale per nota)
+      await fetchAuth(API+'/api/giornaliero-nota/'+aid,{
+        method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
+        body:JSON.stringify({giorno:giorno,nota:value})
+      });
+      showToast();
+    }catch{}
+  },1000);
+}
+
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('nav button').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(name==='operativo')renderAllievoOp();
+  if(name==='resoconto')renderResoconto();
+  if(name==='giornaliero')renderGiornaliero();
+  if(name==='admin')showAdminSection();
+  // Pulisce il campo password admin quando si cambia pagina, evita il popup "aggiorna password"
+  if(name!=='admin'){var ap=document.getElementById('admin-pwd');if(ap&&!adminToken)ap.value='';}
+}
+
+// ── Importa Excel ─────────────────────────────────────────────────────────────
+function importaExcel(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(!rows||rows.length<2){alert('Nessun dato trovato nel file.');input.value='';return;}
+
+      // Cerca colonna Nominativo / Allievo / Nome
+      var headerRow=-1,nameCol=-1;
+      var keywords=['nominativo','allievo','nome','cognome','studente'];
+      for(var ri=0;ri<Math.min(rows.length,5);ri++){
+        for(var ci=0;ci<rows[ri].length;ci++){
+          var cell=String(rows[ri][ci]||'').trim().toLowerCase();
+          if(keywords.some(function(k){return cell.indexOf(k)>=0;})){headerRow=ri;nameCol=ci;break;}
+        }
+        if(headerRow>=0)break;
+      }
+      if(headerRow<0){headerRow=0;nameCol=0;}
+
+      // Costruisce lista nomi definitiva con gestione duplicati
+      var nomiUsati={};
+      allievi.forEach(function(a){nomiUsati[a.nome.toLowerCase()]=true;});
+      var nomiDaAggiungere=[];
+
+      for(var i=headerRow+1;i<rows.length;i++){
+        var v=String(rows[i][nameCol]||'').trim();
+        if(!v||/^\d+$/.test(v))continue;
+        if(keywords.some(function(k){return v.toLowerCase()===k;}))continue;
+        var parti=v.split(/\s+/);
+        var nomeBase=parti[parti.length-1];
+        if(!nomeBase)continue;
+        var nome=nomeBase;
+        var contatore=2;
+        while(nomiUsati[nome.toLowerCase()]){nome=nomeBase+contatore;contatore++;}
+        nomiUsati[nome.toLowerCase()]=true;
+        nomiDaAggiungere.push(nome);
+      }
+
+      if(!nomiDaAggiungere.length){alert('Nessun nome trovato nel file.');input.value='';return;}
+
+      // Esegue le chiamate al server in sequenza usando i nomi gia calcolati
+      (async function(){
+        // Mostra indicatore di caricamento
+        var toast=document.getElementById('save-toast');
+        toast.innerHTML='⏳ Importazione in corso... 0/'+nomiDaAggiungere.length;
+        toast.style.background='var(--arancio)';
+        toast.classList.add('show');
+
+        var aggiunti=0;
+        for(var i=0;i<nomiDaAggiungere.length;i++){
+          await aggiungiAllievoSilenzioso(nomiDaAggiungere[i]);
+          aggiunti++;
+          toast.innerHTML='⏳ Importazione in corso... '+aggiunti+'/'+nomiDaAggiungere.length;
+        }
+        await caricaAllievi();
+
+        // Mostra conferma finale
+        toast.innerHTML='✅ Importati '+aggiunti+' allievi';
+        toast.style.background='var(--verde)';
+        clearTimeout(toast._timer);
+        toast._timer=setTimeout(function(){toast.classList.remove('show');toast.style.background='var(--verde)';toast.innerHTML='&#10003; Salvato';},3000);
+      })();
+
+    }catch(err){alert('Errore lettura file: '+err.message);}
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function aggiungiAllievoSilenzioso(nome){
+  try{
+    var res=await fetchAuth(API+'/api/allievi/'+session.turno,{
+      method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
+      body:JSON.stringify({corso:session.corso,nome:nome})
+    });
+    if(!res)return;
+    var d=await res.json();
+    if(res.ok){
+      allievi.push({id:d.id,nome:nome,foto_url:null,note:'',grades:{},op_grades:{}});
+      if(!currentAllievo)currentAllievo=d.id;
+      if(!currentAllievoOp)currentAllievoOp=d.id;
+    }
+  }catch{}
+}
+
+// ── Resoconto ─────────────────────────────────────────────────────────────────
+function renderResoconto(){
+  var el=document.getElementById('resoconto-content');
+  if(!allievi.length){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#127942;</div><p>Aggiungi allievi e inserisci valutazioni per vedere il resoconto.</p></div>';
+    return;
+  }
+  var schema=SCHEMAS[session.corso]||[];
+  var soglia=getSoglia();
+
+  // Calcola punteggio e semafori per ogni allievo
+  var dati=allievi.map(function(a){
+    var tot=calcTotal(schema,a.grades||{});
+    var sems=schema.map(function(_,si){
+      var media=calcSectionMedia(schema,si,a.grades||{});
+      return getSem(media);
+    });
+    return{a:a,tot:tot,sems:sems};
+  });
+
+  // Ordina per punteggio decrescente
+  dati.sort(function(x,y){return y.tot-x.tot;});
+
+  // Calcola max teorico per barra progresso
+  var maxTot=schema.reduce(function(s,sec){return s+sec.items.reduce(function(ss,it){return ss+it.peso*4;},0);},0);
+
+  var thead='<thead><tr><th class="center" style="width:40px">#</th><th style="width:46px"></th><th>Allievo</th><th class="center">Punteggio</th>';
+  if(soglia)thead+='<th class="center">Esito</th>';
+  thead+='<th>Semafori Sezioni</th><th>Note</th></tr></thead>';
+
+  var tbody=dati.map(function(d,idx){
+    var a=d.a;var tot=d.tot;var sems=d.sems;
+    var rank=idx+1;
+    var rankClass=rank===1?'r1':rank===2?'r2':rank===3?'r3':'';
+    var scoreClass=soglia?(tot>=soglia?'pass':'fail'):'neutral';
+    var pct=maxTot>0?Math.round(tot/maxTot*100):0;
+    var esito='';
+    if(soglia)esito='<td style="text-align:center">'+(tot>=soglia?'<span style="color:var(--verde);font-weight:bold;font-size:.82rem;">&#10003; Promosso</span>':'<span style="color:var(--rosso);font-weight:bold;font-size:.82rem;">&#10007; Non Promosso</span>')+'</td>';
+    var semHtml='<div class="res-sem-row">'+sems.map(function(s,si){return'<span title="'+schema[si].macro+'" class="res-sem '+s+'"></span>';}).join('')+'</div>';
+    var fotoHtml=a.foto_url?'<img class="res-foto" src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'<span class="res-foto-ph">&#128100;</span>';
+    var noteHtml=a.note?'<span style="font-size:.75rem;color:#666;font-style:italic;">'+escH(a.note.substring(0,60))+(a.note.length>60?'...':'')+'</span>':'-';
+    // Barra progresso
+    var barColor=scoreClass==='pass'?'var(--verde)':scoreClass==='fail'?'var(--rosso)':'var(--arancio)';
+    return'<tr>'
+      +'<td style="text-align:center"><span class="res-rank '+rankClass+'">'+rank+'</span></td>'
+      +'<td>'+fotoHtml+'</td>'
+      +'<td><strong>'+escH(a.nome)+'</strong><div style="margin-top:4px;background:#eee;border-radius:4px;height:5px;width:100px;"><div style="background:'+barColor+';height:5px;border-radius:4px;width:'+pct+'%;"></div></div></td>'
+      +'<td style="text-align:center"><span class="res-score '+scoreClass+'">'+tot+'</span><div style="font-size:.68rem;color:#888;margin-top:2px;">/ '+maxTot+'</div></td>'
+      +esito
+      +'<td>'+semHtml+'</td>'
+      +'<td style="max-width:180px;">'+noteHtml+'</td>'
+      +'</tr>';
+  }).join('');
+
+  // Legenda semafori sezioni
+  var legenda='<div style="margin-top:14px;padding:10px 14px;background:var(--grigio);border-radius:8px;font-size:.76rem;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">'
+    +'<span style="font-weight:bold;color:var(--blu);">Semafori sezioni:</span>'
+    +schema.map(function(sec,si){return'<span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block;"></span>'+(si+1)+'. '+sec.macro.split('.')[1].trim().split('-')[0].trim().split('–')[0].trim()+'</span>';}).join('')
+    +'</div>';
+
+  el.innerHTML='<div style="overflow-x:auto;"><table class="res-table">'+thead+'<tbody>'+tbody+'</tbody></table></div>'+legenda;
+}
+
+function esportaCSVResoconto(){
+  if(!allievi.length){alert('Nessun allievo da esportare.');return;}
+  var schema=SCHEMAS[session.corso]||[];
+  var soglia=getSoglia();
+  var dati=allievi.map(function(a){
+    return{nome:a.nome,tot:calcTotal(schema,a.grades||{}),note:a.note||''};
+  });
+  dati.sort(function(x,y){return y.tot-x.tot;});
+  var csv='\uFEFFPos,Allievo,Punteggio'+(soglia?',Esito':'')+(schema.length>0?',Semaforo_'+schema.map(function(_,i){return(i+1);}).join(',Semaforo_'):'')+',Note\n';
+  dati.forEach(function(d,idx){
+    var a=allievi.find(function(x){return x.nome===d.nome;});
+    var sems=schema.map(function(_,si){return getSem(calcSectionMedia(schema,si,a.grades||{}));});
+    var esito=soglia?(d.tot>=soglia?'Promosso':'Non Promosso'):'';
+    csv+=''+(idx+1)+',"'+d.nome+'",'+d.tot+(soglia?',"'+esito+'"':'')
+      +sems.map(function(s){return',"'+(s==='v'?'Verde':s==='g'?'Giallo':'Rosso')+'"';}).join('')
+      +',"'+d.note.replace(/"/g,'""')+'"\n';
+  });
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var link=document.createElement('a');link.href=url;
+  link.download='CVC_T'+session.turno+'_'+session.corso+'_resoconto_'+new Date().toISOString().slice(0,10)+'.csv';
+  link.click();URL.revokeObjectURL(url);
+}
+
+async function showAdminSection(){
+  if(adminToken){const ok=(await fetch(API+'/api/stats',{headers:{'X-Admin-Token':adminToken}})).ok;if(!ok)adminToken=null;}
+  document.getElementById('admin-gate').style.display=adminToken?'none':'block';
+  document.getElementById('admin-panel').style.display=adminToken?'block':'none';
+  if(adminToken){loadStats();loadRiepilogo();}
+}
+async function doAdminLogin(){
+  document.getElementById('admin-err').style.display='none';const pwd=document.getElementById('admin-pwd').value;
+  try{const res=await fetch(API+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});const d=await res.json();if(!res.ok)throw new Error();adminToken=d.token;document.getElementById('admin-gate').style.display='none';document.getElementById('admin-panel').style.display='block';loadStats();loadRiepilogo();}catch{document.getElementById('admin-err').style.display='block';}
+}
+function adminLogout(){adminToken=null;document.getElementById('admin-gate').style.display='block';document.getElementById('admin-panel').style.display='none';document.getElementById('admin-pwd').value='';}
+async function loadStats(){
+  if(!adminToken)return;
+  try{
+    const res=await fetch(API+'/api/stats',{headers:{'X-Admin-Token':adminToken}});if(!res.ok){adminToken=null;return;}const d=await res.json();
+    document.getElementById('stats-grid').innerHTML='<div class="stat"><div class="n">'+d.totale_allievi+'</div><div class="l">Allievi totali</div></div><div class="stat"><div class="n">'+d.n_turni+'</div><div class="l">Turni attivi</div></div><div class="stat"><div class="n">'+d.n_istruttori+'</div><div class="l">Capi Turno</div></div>';
+    document.getElementById('turni-body').innerHTML=(d.turni||[]).map(function(t){
+      var s=t.soglia!==null&&t.soglia!==undefined?t.soglia:66;
+      var corso_esc=t.corso.replace(/'/g,"\\'");
+      return'<tr>'
+        +'<td><strong>T'+t.numero+'</strong></td>'
+        +'<td><span class="tag">'+(CORSI_LABEL[t.corso]||t.corso)+'</span></td>'
+        +'<td>'+t.capoturno+'</td>'
+        +'<td style="font-size:.78rem">'+(t.email||'-')+'</td>'
+        +'<td><span class="pwd-cell">'+t.pwd_plain+'</span></td>'
+        +'<td style="width:110px;">'
+          +'<div style="display:flex;align-items:center;gap:5px;">'
+            +'<input type="number" id="soglia-'+t.numero+'-'+t.corso+'" value="'+s+'" min="0" max="999"'
+              +' style="width:54px;padding:3px 6px;border:1.5px solid var(--bordo);border-radius:5px;font-size:.82rem;text-align:center;"'
+              +' onkeydown="if(event.key===\'Enter\')aggiornaSoglia('+t.numero+',\''+corso_esc+'\')">'
+            +'<button class="btn btn-sm btn-primary" onclick="aggiornaSoglia('+t.numero+',\''+corso_esc+'\')" title="Salva soglia">&#10003;</button>'
+          +'</div>'
+        +'</td>'
+        +'<td style="text-align:center">'+t.n_allievi+'</td>'
+        +'<td><button class="btn btn-danger btn-sm" onclick="cancellaTurno('+t.numero+',\''+corso_esc+'\')">&#128465;</button></td>'
+        +'</tr>';
+    }).join('')||'<tr><td colspan="8" class="empty">Nessun turno.</td></tr>';
+  }catch{}
+}
+async function loadRiepilogo(){
+  if(!adminToken)return;
+  const q=document.getElementById('f-q').value,corso=document.getElementById('f-corso').value,turno=document.getElementById('f-turno').value;
+  let url=API+'/api/valutazioni/all?';if(q)url+='&q='+encodeURIComponent(q);if(corso)url+='&corso='+encodeURIComponent(corso);if(turno)url+='&turno='+encodeURIComponent(turno);
+  document.getElementById('tab-spinner').style.display='block';document.getElementById('tab-body').innerHTML='';
+  try{
+    const res=await fetch(url,{headers:{'X-Admin-Token':adminToken}});const data=await res.json();
+    document.getElementById('count-badge').textContent=data.total||0;const rows=data.rows||[];
+    if(!rows.length){document.getElementById('tab-body').innerHTML='<tr><td colspan="6" class="empty">Nessun risultato.</td></tr>';return;}
+    document.getElementById('tab-body').innerHTML=rows.map(function(r){const s=SOGLIE[r.corso];const pass=s?r.totale>=s:null;const esito=s?(pass?'<span style="color:var(--verde);font-weight:bold;">Promosso</span>':'<span style="color:var(--rosso);font-weight:bold;">Non Promosso</span>'):'-';return'<tr><td><strong>T'+r.turno+'</strong></td><td><span class="tag">'+(CORSI_LABEL[r.corso]||r.corso)+'</span></td><td>'+(r.capoturno||'-')+'</td><td><strong>'+r.nome+'</strong>'+(r.foto_url?'<img src="'+r.foto_url+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;" alt="">':'')+'</td><td><span class="score">'+r.totale+'</span></td><td>'+esito+'</td></tr>';}).join('');
+  }catch{document.getElementById('tab-body').innerHTML='<tr><td colspan="6" class="empty">Errore.</td></tr>';}
+  finally{document.getElementById('tab-spinner').style.display='none';}
+}
+async function cancellaTurno(numero,corso){if(!adminToken){alert('Accedi come admin.');return;}if(!confirm('Cancellare il Turno '+numero+' - '+(CORSI_LABEL[corso]||corso)+'?'))return;try{const res=await fetch(API+'/api/turno/'+numero+'?corso='+encodeURIComponent(corso),{method:'DELETE',headers:{'X-Admin-Token':adminToken}});const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore');alert('Turno '+numero+' eliminato ('+d.allievi+' allievi rimossi).');loadStats();loadRiepilogo();}catch(e){alert('Errore: '+e.message);}}
+
+async function aggiornaSoglia(numero, corso){
+  if(!adminToken){alert('Accedi come admin.');return;}
+  var inp=document.getElementById('soglia-'+numero+'-'+corso);
+  if(!inp)return;
+  var val=parseInt(inp.value);
+  if(isNaN(val)||val<0||val>999){alert('Soglia non valida (0-999).');return;}
+  try{
+    var res=await fetch(API+'/api/turno/'+numero+'/soglia',{
+      method:'PUT',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},
+      body:JSON.stringify({corso:corso,soglia:val})
+    });
+    var d=await res.json();
+    if(!res.ok)throw new Error(d.error||'Errore');
+    inp.style.borderColor='var(--verde)';
+    setTimeout(function(){inp.style.borderColor='var(--bordo)';},1500);
+    // Aggiorna sessione corrente se è lo stesso turno
+    if(session&&session.turno===numero&&session.corso===corso){
+      session.soglia=val;saveSession(session);
+    }
+  }catch(e){alert('Errore: '+e.message);}
+}
+async function adminExportCSV(){if(!adminToken){alert('Accedi come admin.');return;}try{const res=await fetch(API+'/api/export/csv',{headers:{'X-Admin-Token':adminToken}});if(!res.ok)throw new Error('Nessun dato');const blob=await res.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CVC_Istruttori_valutazioni.csv';a.click();URL.revokeObjectURL(a.href);}catch(e){alert(e.message);}}
+async function backupDB(){if(!adminToken){alert('Accedi come admin.');return;}const res=await fetch(API+'/api/backup',{headers:{'X-Admin-Token':adminToken}});if(!res.ok){alert('Errore backup');return;}const blob=await res.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CVC_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);}
+async function cancellaFoto(){if(!adminToken){alert('Accedi come admin.');return;}if(!confirm('Cancellare TUTTE le foto?'))return;try{const res=await fetch(API+'/api/foto/all',{method:'DELETE',headers:{'X-Admin-Token':adminToken}});const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore');alert('Cancellate '+d.cancellate+' foto.');}catch(e){alert('Errore: '+e.message);}}
+async function resetDB(){if(!adminToken){alert('Accedi come admin.');return;}if(!confirm('ATTENZIONE: cancellare TUTTI i dati?'))return;if(!confirm('Conferma definitiva?'))return;try{const res=await fetch(API+'/api/reset',{method:'POST',headers:{'X-Admin-Token':adminToken}});if(!res.ok)throw new Error('Errore');adminToken=null;sessionStorage.clear();alert('Database resettato.');adminLogout();}catch(e){alert('Errore: '+e.message);}}
+async function restoreDB(input){if(!adminToken){alert('Accedi come admin.');return;}const file=input.files[0];if(!file)return;if(!confirm('Il Restore sovrascrivera TUTTI i dati attuali. Sei sicuro?')){input.value='';return;}const formData=new FormData();formData.append('file',file);try{const res=await fetch(API+'/api/restore',{method:'POST',headers:{'X-Admin-Token':adminToken},body:formData});const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore restore');alert('Restore completato! Turni: '+d.turni+' Allievi: '+d.allievi);loadStats();loadRiepilogo();}catch(e){alert('Errore restore: '+e.message);}input.value='';}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+init();
+</script>
+</body>
+</html>
