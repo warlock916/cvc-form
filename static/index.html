@@ -621,8 +621,11 @@ function renderAllievoContent(){
     const media=calcSectionMedia(schema,si,a.grades);
     rows+='<tr class="semaforo-row"><td colspan="2">&#128992; Semaforo &mdash; <em>'+sec.macro+'</em></td><td id="sem-'+a.id+'-'+si+'">'+semBadge(getSem(media))+'</td></tr>';
   });
-  const tot=calcTotal(schema,a.grades);const passClass=soglia?(tot>=soglia?'pass':'fail'):'';const passLbl=soglia?(tot>=soglia?'&#10003; Promosso':'&#10007; Non Promosso'):'punti';
-  rows+='<tr class="total-row"><td colspan="2">Totale complessivo valutazione allievo</td><td><div class="score-box '+passClass+'" id="score-'+a.id+'"><span class="sval">'+tot+'</span><span class="slbl">'+passLbl+(soglia?' (min. '+soglia+')':'totale')+'</span></div></td></tr>';
+  const tot=calcTotal(schema,a.grades);
+  const nonProm=soglia?isNonPromosso(schema,a.grades,soglia,session.corso):null;
+  const passClass=nonProm===null?'':(nonProm?'fail':'pass');
+  const passLbl=nonProm===null?(soglia?'da valutare':'punti'):(nonProm?'&#10007; Non Promosso':'&#10003; Promosso');
+  rows+='<tr class="total-row"><td colspan="2">Totale complessivo valutazione allievo</td><td><div class="score-box '+passClass+'" id="score-'+a.id+'"><span class="sval">'+tot+'</span><span class="slbl">'+passLbl+(soglia&&nonProm!==null?' (min. '+soglia+')':'')+'</span></div></td></tr>';
   html+='<div style="overflow-x:auto;"><table class="eval-table"><thead><tr><th>Criterio di Valutazione</th><th class="center" style="width:80px">Peso</th><th style="width:155px">Valutazione</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   document.getElementById('allievo-content').innerHTML=html;
   checkNpWarn(a);
@@ -633,19 +636,60 @@ function setGrade(aid,vkey,value){
   const sel=document.getElementById('sel-'+aid+'-'+vkey);if(sel)sel.className='voto-sel '+(VOTO_CLASS[value]||'');
   updateSemAndScore(a);autoSave(aid,'val',Object.fromEntries([[vkey,value]]));
 }
+function isNonPromosso(schema, grades, soglia, corso){
+  // Se non c'è nessun voto inserito, stato sconosciuto (null = non mostrare esito)
+  var hasAny=Object.keys(grades).some(function(k){return k.startsWith('v_')&&(grades[k]||'').trim()!=='';});
+  if(!hasAny) return null;
+  // Regola 1: punteggio sotto soglia
+  if(soglia && calcTotal(schema,grades)<soglia) return true;
+  // Regola 2: sezioni 1 e 2 entrambe insufficienti
+  if(corso==='Istruttori1'||corso==='IstruttoriC3'){
+    var has0=schema[0].items.some(function(_,ci){return (grades['v_0_'+ci]||'').trim()!=='';});
+    var has1=schema[1].items.some(function(_,ci){return (grades['v_1_'+ci]||'').trim()!=='';});
+    if(has0&&has1){
+      var m0=calcSectionMedia(schema,0,grades);
+      var m1=calcSectionMedia(schema,1,grades);
+      if(getSem(m0)!=='v'&&getSem(m1)!=='v') return true;
+    }
+  }
+  return false;
+}
+
 function updateSemAndScore(a){
   const schema=SCHEMAS[session.corso]||[];const soglia=SOGLIE[session.corso];
   schema.forEach(function(_,si){const media=calcSectionMedia(schema,si,a.grades);const el=document.getElementById('sem-'+a.id+'-'+si);if(el)el.innerHTML=semBadge(getSem(media));});
   const tot=calcTotal(schema,a.grades);const el=document.getElementById('score-'+a.id);
-  if(el){const passClass=soglia?(tot>=soglia?'pass':'fail'):'';const passLbl=soglia?(tot>=soglia?'&#10003; Promosso':'&#10007; Non Promosso'):'punti';el.className='score-box '+passClass;el.querySelector('.sval').textContent=tot;el.querySelector('.slbl').innerHTML=passLbl+(soglia?' (min. '+soglia+')':'totale');}
+  if(el){
+    const nonProm=soglia?isNonPromosso(schema,a.grades,soglia,session.corso):null;
+    const passClass=nonProm===null?'':(nonProm?'fail':'pass');
+    const passLbl=nonProm===null?(soglia?'da valutare':'punti'):(nonProm?'&#10007; Non Promosso':'&#10003; Promosso');
+    el.className='score-box '+passClass;
+    el.querySelector('.sval').textContent=tot;
+    el.querySelector('.slbl').innerHTML=passLbl+(soglia&&nonProm!==null?' (min. '+soglia+')':'');
+  }
   checkNpWarn(a);
 }
 function checkNpWarn(a){
   const el=document.getElementById('np-warn-'+a.id);if(!el)return;
   const schema=SCHEMAS[session.corso]||[];
-  const m0=calcSectionMedia(schema,0,a.grades);const m1=calcSectionMedia(schema,1,a.grades);
-  const bad=function(m){return getSem(m)!=='v';};
-  el.classList.toggle('show',bad(m0)&&bad(m1));
+
+  // Conta i voti inseriti nelle sezioni 0 e 1
+  function hasVoti(si){
+    return schema[si].items.some(function(_,ci){
+      var v=(a.grades['v_'+si+'_'+ci]||'').trim();
+      return v!=='';
+    });
+  }
+
+  const has0=hasVoti(0); const has1=hasVoti(1);
+  // Mostra avviso SOLO se ci sono voti inseriti in entrambe le sezioni
+  // E entrambe risultano non verdi (rosse o gialle)
+  if(!has0||!has1){el.classList.remove('show');return;}
+
+  const m0=calcSectionMedia(schema,0,a.grades);
+  const m1=calcSectionMedia(schema,1,a.grades);
+  const insufficiente=function(m){return getSem(m)!=='v';};
+  el.classList.toggle('show', insufficiente(m0)&&insufficiente(m1));
 }
 
 function renderAllievoOp(){
