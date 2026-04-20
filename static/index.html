@@ -149,7 +149,43 @@ table.riepilogo td{padding:6px 9px;}
 .res-sem-row{display:flex;gap:4px;flex-wrap:wrap;}
 .res-sem{display:inline-block;width:10px;height:10px;border-radius:50%;}
 .res-sem.v{background:#16a34a;}.res-sem.g{background:#d97706;}.res-sem.r{background:#b91c1c;}
-@media(max-width:500px){.home-grid{grid-template-columns:1fr;}}
+/* Giornaliero */
+.giorn-days{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.giorn-day-btn{padding:7px 16px;border:2px solid var(--bordo);border-radius:20px;font-size:.85rem;font-weight:bold;cursor:pointer;background:white;color:#555;transition:all .2s;}
+.giorn-day-btn:hover{border-color:var(--blu2);color:var(--blu);}
+.giorn-day-btn.active{color:white;border-color:var(--blu);background:var(--blu);}
+.giorn-day-btn.has-data{border-style:solid;}
+.giorn-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.giorn-table th{background:var(--blu);color:white;padding:8px 6px;text-align:center;font-weight:600;white-space:nowrap;}
+.giorn-table th.nome-th{text-align:left;min-width:90px;position:sticky;left:0;z-index:3;background:var(--blu);}
+.giorn-table td{padding:4px 4px;border-bottom:1px solid #eee;vertical-align:middle;text-align:center;}
+.giorn-table td.nome-td{text-align:left;font-weight:600;background:#f8f9fa;position:sticky;left:0;z-index:2;border-right:2px solid #ddd;padding:4px 8px;white-space:nowrap;}
+.giorn-table tr:hover td{background:#f0f6ff;}
+.giorn-table tr:hover td.nome-td{background:#e8f0fb;}
+.giorn-sel{width:100%;padding:3px 4px;border:1.5px solid var(--bordo);border-radius:5px;font-size:.75rem;cursor:pointer;outline:none;font-family:inherit;min-width:105px;}
+.giorn-sel.v-nr{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+.giorn-sel.v-da{background:#fef3c7;color:#92400e;border-color:#fcd34d;}
+.giorn-sel.v-suf{background:#fef9c3;color:#713f12;border-color:#fde047;}
+.giorn-sel.v-buo{background:#ccfbf1;color:#0f766e;border-color:#5eead4;}
+.giorn-sel.v-ott{background:#dcfce7;color:#15803d;border-color:#86efac;}
+.giorn-sel.v-ns{background:#f1f5f9;color:#64748b;}
+.nota-giorn{width:100%;padding:2px 4px;border:1px solid var(--bordo);border-radius:4px;font-size:.72rem;resize:none;font-family:inherit;outline:none;}
+.nota-giorn:focus{border-color:var(--arancio);}
+.progress-wrap{margin-top:20px;overflow-x:auto;}
+.prog-table{border-collapse:collapse;font-size:.78rem;min-width:600px;}
+.prog-table th{background:var(--blu);color:white;padding:6px 10px;text-align:center;font-weight:600;}
+.prog-table th.nome-th{text-align:left;min-width:90px;}
+.prog-table td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center;}
+.prog-table td.nome-td{text-align:left;font-weight:600;background:#f8f9fa;}
+.prog-dot{display:inline-block;width:28px;height:28px;border-radius:50%;line-height:28px;text-align:center;font-size:.72rem;font-weight:bold;color:white;}
+.prog-dot.p-v{background:var(--verde);}
+.prog-dot.p-g{background:var(--arancio);}
+.prog-dot.p-r{background:var(--rosso);}
+.prog-dot.p-0{background:#ddd;color:#999;}
+.prog-trend{font-size:.8rem;padding:2px 8px;border-radius:10px;font-weight:bold;}
+.prog-trend.up{background:#dcfce7;color:#15803d;}
+.prog-trend.down{background:#fee2e2;color:#b91c1c;}
+.prog-trend.flat{background:#f1f5f9;color:#64748b;}
 </style>
 </head>
 <body>
@@ -164,6 +200,7 @@ table.riepilogo td{padding:6px 9px;}
   <button id="nav-scheda" onclick="showPage('scheda',this)">&#128203; Valutazione</button>
   <button id="nav-op" onclick="showPage('operativo',this)">&#128676; Operativo</button>
   <button id="nav-res" onclick="showPage('resoconto',this)">&#127942; Resoconto</button>
+  <button id="nav-giorn" onclick="showPage('giornaliero',this)">&#128197; Giornaliero</button>
   <button id="nav-admin" onclick="showPage('admin',this)">&#128274; Admin</button>
   <button onclick="doLogout()" style="margin-left:auto;">&#8617; Esci</button>
 </nav>
@@ -225,6 +262,11 @@ table.riepilogo td{padding:6px 9px;}
         <div class="title">Resoconto</div>
         <div class="sub">Classifica allievi ordinata per punteggio finale con semafori sezioni</div>
       </div>
+      <div class="home-card" onclick="showPage('giornaliero',document.getElementById('nav-giorn'))">
+        <div class="icon">&#128197;</div>
+        <div class="title">Giornaliero</div>
+        <div class="sub">Valutazione per sezione giorno per giorno G1&rarr;G7 con andamento progressivo</div>
+      </div>
     </div>
   </div>
 </div>
@@ -264,6 +306,24 @@ table.riepilogo td{padding:6px 9px;}
     <div class="btn-row">
       <button class="btn btn-outline btn-sm" onclick="esportaCSVResoconto()">&#128229; Esporta Resoconto CSV</button>
     </div>
+  </div>
+</div>
+
+<div id="page-giornaliero" class="page">
+  <div class="card">
+    <h2>&#128197; <span id="giorn-subtitle" style="font-weight:normal;color:#555;font-size:.88rem;"></span></h2>
+    <p style="font-size:.8rem;color:#888;margin-bottom:12px;">Seleziona il giorno e compila la valutazione per sezione. I dati si salvano automaticamente.</p>
+    <!-- Selettore giorni -->
+    <div class="giorn-days" id="giorn-days"></div>
+    <!-- Tabella valutazione giornaliera -->
+    <div style="overflow-x:auto;">
+      <table class="giorn-table" id="giorn-table">
+        <thead id="giorn-thead"></thead>
+        <tbody id="giorn-tbody"></tbody>
+      </table>
+    </div>
+    <!-- Progresso 7 giorni -->
+    <div class="progress-wrap" id="giorn-progress"></div>
   </div>
 </div>
 
@@ -538,6 +598,7 @@ async function enterApp(){
   document.getElementById('scheda-subtitle').textContent='Valutazione - Turno '+session.turno+' - '+label;
   document.getElementById('op-subtitle').textContent='Operativo - Turno '+session.turno+' - '+label;
   document.getElementById('res-subtitle').textContent='Resoconto - Turno '+session.turno+' - '+label;
+  document.getElementById('giorn-subtitle').textContent='Giornaliero - Turno '+session.turno+' - '+label;
   showPage('home');
   await caricaAllievi();
 }
@@ -801,6 +862,205 @@ function esportaCSV(tipo){
   const link=document.createElement('a');link.href=url;link.download='CVC_T'+session.turno+'_'+session.corso+'_'+tipo+'_'+new Date().toISOString().slice(0,10)+'.csv';link.click();URL.revokeObjectURL(url);
 }
 
+// ══════════════════════════════════════════════════
+// GIORNALIERO
+// ══════════════════════════════════════════════════
+var giornCorrente=1;
+var DAY_COLORS_G=['#2E75B6','#375623','#7B5C00','#7030A0','#C00000','#006B6B','#8B3A00'];
+var SEZIONI_BREVI=['Navigazione','Sicurezza','Didattica','Team','Ruolo','Logistica'];
+
+function getGiornIndex(){
+  // Calcola il giorno corrente del corso in base alla data (solo suggerimento)
+  return giornCorrente;
+}
+
+function setGiornCorrente(g){
+  giornCorrente=g;
+  document.querySelectorAll('.giorn-day-btn').forEach(function(b){
+    b.classList.toggle('active',parseInt(b.dataset.g)===g);
+  });
+  renderGiornTable();
+}
+
+function renderGiornaliero(){
+  if(!allievi.length){
+    document.getElementById('giorn-days').innerHTML='';
+    document.getElementById('giorn-thead').innerHTML='';
+    document.getElementById('giorn-tbody').innerHTML='<tr><td colspan="10" class="empty" style="text-align:center;padding:32px;color:#aaa;">Aggiungi allievi dalla scheda Valutazione</td></tr>';
+    document.getElementById('giorn-progress').innerHTML='';
+    return;
+  }
+  renderGiornDays();
+  renderGiornTable();
+  renderGiornProgress();
+}
+
+function renderGiornDays(){
+  var html='';
+  for(var g=1;g<=7;g++){
+    // Controlla se ci sono dati per questo giorno
+    var hasDati=allievi.some(function(a){
+      var giorn=a.giorn||{};
+      return Object.keys(giorn).some(function(k){return k.startsWith(g+'_')&&giorn[k].valore;});
+    });
+    html+='<button class="giorn-day-btn'+(g===giornCorrente?' active':'')+(hasDati?' has-data':'')+'" '
+      +'data-g="'+g+'" onclick="setGiornCorrente('+g+')" '
+      +'style="'+(hasDati?'border-color:'+DAY_COLORS_G[g-1]+';':'')+(g===giornCorrente?'background:'+DAY_COLORS_G[g-1]+';border-color:'+DAY_COLORS_G[g-1]+';':'')+'">'
+      +'G'+g
+      +(hasDati?' ✓':'')
+      +'</button>';
+  }
+  document.getElementById('giorn-days').innerHTML=html;
+}
+
+function renderGiornTable(){
+  var g=giornCorrente;
+  var colBg=DAY_COLORS_G[g-1];
+
+  // Header
+  var thead='<tr><th class="nome-th" style="background:'+colBg+';">Allievo</th>';
+  SEZIONI_BREVI.forEach(function(s){
+    thead+='<th style="background:'+colBg+';min-width:110px;">'+s+'</th>';
+  });
+  thead+='<th style="background:'+colBg+';min-width:130px;">Nota G'+g+'</th></tr>';
+  document.getElementById('giorn-thead').innerHTML=thead;
+
+  // Rows
+  var tbody='';
+  allievi.forEach(function(a){
+    tbody+='<tr>';
+    tbody+='<td class="nome-td">'
+      +(a.foto_url?'<img src="'+a.foto_url+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;" alt="">':'')
+      +escH(a.nome)+'</td>';
+
+    // 6 sezioni
+    for(var si=0;si<6;si++){
+      var key=g+'_'+si;
+      var entry=(a.giorn||{})[key]||{};
+      var val=entry.valore||'';
+      var vc=VOTO_CLASS[val]||'';
+      tbody+='<td>'
+        +'<select class="giorn-sel '+vc+'" '
+          +'onchange="setGiornGrade('+a.id+','+g+','+si+',this.value,this)">'
+        +VOTI.map(function(v){return'<option value="'+v+'"'+(v===val?' selected':'')+'>'+( v||'- -')+'</option>';}).join('')
+        +'</select></td>';
+    }
+
+    // Nota giorno — usa sezione 6 come chiave speciale per la nota
+    var notaKey=g+'_nota';
+    var notaVal=(a.giorn||{})[notaKey]||{};
+    var nota=notaVal.nota||notaVal.valore||'';
+    tbody+='<td>'
+      +'<textarea class="nota-giorn" rows="2" placeholder="Note..." '
+        +'onchange="setGiornNota('+a.id+','+g+',this.value)">'
+      +escH(nota)+'</textarea></td>';
+
+    tbody+='</tr>';
+  });
+  document.getElementById('giorn-tbody').innerHTML=tbody;
+}
+
+function renderGiornProgress(){
+  if(!allievi.length){document.getElementById('giorn-progress').innerHTML='';return;}
+  var schema=SCHEMAS[session.corso]||[];
+
+  var html='<h3 style="color:var(--blu);font-size:.88rem;margin-bottom:10px;margin-top:4px;">📈 Andamento 7 giorni</h3>'
+    +'<div style="overflow-x:auto;"><table class="prog-table">'
+    +'<thead><tr><th class="nome-th">Allievo</th>';
+  for(var g=1;g<=7;g++){
+    html+='<th style="background:'+DAY_COLORS_G[g-1]+';">G'+g+'</th>';
+  }
+  html+='<th style="background:var(--blu);">Trend</th></tr></thead><tbody>';
+
+  allievi.forEach(function(a){
+    html+='<tr><td class="nome-td">'
+      +(a.foto_url?'<img src="'+a.foto_url+'" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px;" alt="">':'')
+      +escH(a.nome)+'</td>';
+
+    var punteggi=[];
+    for(var g=1;g<=7;g++){
+      var totG=0; var nVoti=0;
+      for(var si=0;si<6;si++){
+        var key=g+'_'+si;
+        var val=((a.giorn||{})[key]||{}).valore||'';
+        if(val){totG+=(PESI_VOTI[val]||0);nVoti++;}
+      }
+      var media=nVoti>0?totG/nVoti:null;
+      punteggi.push(media);
+      var cls=media===null?'p-0':(media>=2?'p-v':(media>=1?'p-g':'p-r'));
+      var lbl=media===null?'—':(media>=2?'S':(media>=1?'D':'N'));
+      html+='<td><span class="prog-dot '+cls+'" title="Media: '+(media!==null?media.toFixed(1):'—')+'">'+lbl+'</span></td>';
+    }
+
+    // Trend: confronta primo e ultimo giorno con dati
+    var validi=punteggi.filter(function(p){return p!==null;});
+    var trend='flat'; var trendLbl='→';
+    if(validi.length>=2){
+      var diff=validi[validi.length-1]-validi[0];
+      if(diff>0.3){trend='up';trendLbl='↑';}
+      else if(diff<-0.3){trend='down';trendLbl='↓';}
+    }
+    html+='<td><span class="prog-trend '+trend+'">'+trendLbl+'</span></td>';
+    html+='</tr>';
+  });
+
+  html+='</tbody></table></div>'
+    +'<div style="margin-top:8px;font-size:.75rem;color:#888;display:flex;gap:16px;">'
+    +'<span><span class="prog-dot p-v" style="width:16px;height:16px;line-height:16px;font-size:.6rem;">S</span> Verde = Sufficiente+</span>'
+    +'<span><span class="prog-dot p-g" style="width:16px;height:16px;line-height:16px;font-size:.6rem;">D</span> Giallo = Da Affinare</span>'
+    +'<span><span class="prog-dot p-r" style="width:16px;height:16px;line-height:16px;font-size:.6rem;">N</span> Rosso = Non Raggiunto</span>'
+    +'</div>';
+  document.getElementById('giorn-progress').innerHTML=html;
+}
+
+var giornTimers={};
+function setGiornGrade(aid,giorno,sezione,value,sel){
+  // Aggiorna colore select
+  sel.className='giorn-sel '+(VOTO_CLASS[value]||'');
+  // Aggiorna stato locale
+  var a=allievi.find(function(x){return x.id===aid;});
+  if(!a)return;
+  if(!a.giorn)a.giorn={};
+  var key=giorno+'_'+sezione;
+  if(!a.giorn[key])a.giorn[key]={};
+  a.giorn[key].valore=value;
+  // Auto-save
+  var tk='g_'+aid+'_'+giorno+'_'+sezione;
+  clearTimeout(giornTimers[tk]);
+  giornTimers[tk]=setTimeout(async function(){
+    try{
+      await fetchAuth(API+'/api/giornaliero/'+aid,{
+        method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
+        body:JSON.stringify({giorno:giorno,sezione:sezione,valore:value,nota:''})
+      });
+      showToast();
+      renderGiornDays();
+      renderGiornProgress();
+    }catch{}
+  },600);
+}
+
+function setGiornNota(aid,giorno,value){
+  var a=allievi.find(function(x){return x.id===aid;});
+  if(!a)return;
+  if(!a.giorn)a.giorn={};
+  var key=giorno+'_nota';
+  if(!a.giorn[key])a.giorn[key]={};
+  a.giorn[key].nota=value;
+  var tk='gn_'+aid+'_'+giorno;
+  clearTimeout(giornTimers[tk]);
+  giornTimers[tk]=setTimeout(async function(){
+    try{
+      // Salva la nota come sezione 99 (valore speciale per nota)
+      await fetchAuth(API+'/api/giornaliero-nota/'+aid,{
+        method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
+        body:JSON.stringify({giorno:giorno,nota:value})
+      });
+      showToast();
+    }catch{}
+  },1000);
+}
+
 function showPage(name,btn){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('nav button').forEach(function(b){b.classList.remove('active');});
@@ -808,6 +1068,7 @@ function showPage(name,btn){
   if(btn)btn.classList.add('active');
   if(name==='operativo')renderAllievoOp();
   if(name==='resoconto')renderResoconto();
+  if(name==='giornaliero')renderGiornaliero();
   if(name==='admin')showAdminSection();
   // Pulisce il campo password admin quando si cambia pagina, evita il popup "aggiorna password"
   if(name!=='admin'){var ap=document.getElementById('admin-pwd');if(ap&&!adminToken)ap.value='';}
