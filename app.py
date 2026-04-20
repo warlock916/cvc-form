@@ -217,6 +217,7 @@ def init_db():
             pwd_plain  TEXT NOT NULL,
             capoturno  TEXT NOT NULL,
             email      TEXT,
+            soglia     INTEGER DEFAULT 66,
             created_at {TS},
             UNIQUE(numero, corso)
         )''')
@@ -262,17 +263,29 @@ def migrate_db():
     try:
         with get_db() as conn:
             cur = conn.cursor()
-            if not USE_PG:
+            if USE_PG:
+                for col, defval in [('corso','TEXT'), ('foto_ok','INTEGER DEFAULT 0'), ('soglia','INTEGER DEFAULT 66')]:
+                    cur.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='{col}'")
+                    if col == 'soglia' and not cur.fetchone():
+                        cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66')
+                        conn.commit()
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='corso'")
+                if not cur.fetchone():
+                    cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT'); conn.commit()
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='foto_ok'")
+                if not cur.fetchone():
+                    cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0'); conn.commit()
+            else:
                 cur.execute("PRAGMA table_info(sessions)")
                 cols = [r[1] for r in cur.fetchall()]
                 if 'corso' not in cols:
-                    cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT')
-                    conn.commit()
-                cur.execute("PRAGMA table_info(sessions)")
-                cols = [r[1] for r in cur.fetchall()]
+                    cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT'); conn.commit()
                 if 'foto_ok' not in cols:
-                    cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0')
-                    conn.commit()
+                    cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0'); conn.commit()
+                cur.execute("PRAGMA table_info(turni)")
+                cols2 = [r[1] for r in cur.fetchall()]
+                if 'soglia' not in cols2:
+                    cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
     except Exception as e:
         print(f"Migration: {e}")
 
@@ -399,6 +412,7 @@ def turno_login():
     return jsonify({
         'token': token, 'tipo': 'turno', 'turno': numero,
         'corso': turno_dict['corso'], 'capoturno': turno_dict['capoturno'],
+        'soglia': turno_dict.get('soglia') if turno_dict.get('soglia') is not None else 66,
         'fotoAbilitata': pwd == FOTO_PWD
     })
 
@@ -653,7 +667,7 @@ def get_stats():
         n_turni = cur.fetchone()[0]
         cur.execute('SELECT COUNT(DISTINCT capoturno) FROM turni')
         n_istr = cur.fetchone()[0]
-        cur.execute('SELECT numero, corso, capoturno, email, pwd_plain FROM turni ORDER BY numero, corso')
+        cur.execute('SELECT numero, corso, capoturno, email, pwd_plain, soglia FROM turni ORDER BY numero, corso')
         turni = rows_to_dicts(cur.fetchall(), cur)
 
         # Conteggio allievi per turno/corso
@@ -662,6 +676,7 @@ def get_stats():
         ac_map = {(r['turno'], r['corso']): r['n'] for r in ac}
         for t in turni:
             t['n_allievi'] = ac_map.get((t['numero'], t['corso']), 0)
+            if t.get('soglia') is None: t['soglia'] = 66  # default per turni esistenti
 
     return jsonify({
         'totale_allievi': totale,
@@ -669,6 +684,27 @@ def get_stats():
         'n_istruttori': n_istr,
         'turni': turni
     })
+
+@app.route('/api/turno/<int:numero>/soglia', methods=['PUT'])
+@check_admin
+def update_soglia(numero):
+    d = request.json or {}
+    corso = d.get('corso', '')
+    soglia = d.get('soglia')
+    if not corso: return jsonify({'error': 'Corso obbligatorio'}), 400
+    try:
+        soglia = int(soglia)
+        if soglia < 0 or soglia > 999: raise ValueError()
+    except:
+        return jsonify({'error': 'Soglia non valida (0-999)'}), 400
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(f'UPDATE turni SET soglia={PH} WHERE numero={PH} AND corso={PH}',
+                    (soglia, numero, corso))
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Turno non trovato'}), 404
+        conn.commit()
+    return jsonify({'ok': True, 'soglia': soglia})
 
 @app.route('/api/valutazioni/all', methods=['GET'])
 @check_admin
