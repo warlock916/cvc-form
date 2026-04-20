@@ -264,17 +264,18 @@ def migrate_db():
         with get_db() as conn:
             cur = conn.cursor()
             if USE_PG:
-                for col, defval in [('corso','TEXT'), ('foto_ok','INTEGER DEFAULT 0'), ('soglia','INTEGER DEFAULT 66')]:
-                    cur.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='{col}'")
-                    if col == 'soglia' and not cur.fetchone():
-                        cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66')
-                        conn.commit()
+                # sessions.corso
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='corso'")
                 if not cur.fetchone():
                     cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT'); conn.commit()
+                # sessions.foto_ok
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='foto_ok'")
                 if not cur.fetchone():
                     cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0'); conn.commit()
+                # turni.soglia
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='soglia'")
+                if not cur.fetchone():
+                    cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
             else:
                 cur.execute("PRAGMA table_info(sessions)")
                 cols = [r[1] for r in cur.fetchall()]
