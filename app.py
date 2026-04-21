@@ -24,30 +24,53 @@ if DATABASE_URL:
     try:
         import psycopg2
         import psycopg2.extras
-        # Railway usa sia "postgres://" che "postgresql://"
+        import psycopg2.pool
+        from contextlib import contextmanager
+
         _db_url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
+        # Connection pool: min 1, max 10 connessioni
+        _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, _db_url, sslmode='require')
+
+        @contextmanager
         def get_db():
-            conn = psycopg2.connect(_db_url, sslmode='require')
-            return conn
+            conn = _pool.getconn()
+            conn.autocommit = False
+            try:
+                yield conn
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                _pool.putconn(conn)
 
         # Test connessione
-        _test = get_db()
-        _test.close()
+        with get_db() as _test:
+            _test.cursor().execute('SELECT 1')
         USE_PG = True
         PH = '%s'
-        print(f"[DB] PostgreSQL connesso OK")
+        print(f"[DB] PostgreSQL connesso OK (pool)")
     except Exception as e:
         print(f"[DB] PostgreSQL fallito ({e}), uso SQLite")
         USE_PG = False
 
 if not USE_PG:
     import sqlite3
+    from contextlib import contextmanager
     DB = os.environ.get('DB_PATH', 'cvc_istruttori.db')
+
+    @contextmanager
     def get_db():
         conn = sqlite3.connect(DB)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     PH = '?'
     print(f"[DB] SQLite: {DB}")
 
@@ -207,91 +230,161 @@ def init_db():
     AIP = "" if USE_PG else "AUTOINCREMENT"
     TS  = "TIMESTAMP DEFAULT NOW()" if USE_PG else "TEXT DEFAULT (datetime('now'))"
 
-    with get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS turni (
-            id         {AI} PRIMARY KEY {AIP},
-            numero     INTEGER NOT NULL,
-            corso      TEXT NOT NULL,
-            pwd_hash   TEXT NOT NULL,
-            pwd_plain  TEXT NOT NULL,
-            capoturno  TEXT NOT NULL,
-            email      TEXT,
-            soglia     INTEGER DEFAULT 66,
-            foto_abilitata INTEGER DEFAULT 0,
-            created_at {TS},
-            UNIQUE(numero, corso)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS allievi (
-            id         {AI} PRIMARY KEY {AIP},
-            turno      INTEGER NOT NULL,
-            corso      TEXT NOT NULL,
-            nome       TEXT NOT NULL,
-            foto_url   TEXT,
-            note       TEXT,
-            created_at {TS},
-            UNIQUE(turno, corso, nome)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni (
-            id         {AI} PRIMARY KEY {AIP},
-            allievo_id INTEGER NOT NULL,
-            vkey       TEXT NOT NULL,
-            valore     TEXT,
-            updated_at {TS},
-            UNIQUE(allievo_id, vkey)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni_op (
-            id         {AI} PRIMARY KEY {AIP},
-            allievo_id INTEGER NOT NULL,
-            vkey       TEXT NOT NULL,
-            valore     TEXT,
-            updated_at {TS},
-            UNIQUE(allievo_id, vkey)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS giornaliero (
-            id         {AI} PRIMARY KEY {AIP},
-            allievo_id INTEGER NOT NULL,
-            giorno     INTEGER NOT NULL,
-            sezione    INTEGER NOT NULL,
-            valore     TEXT,
-            nota       TEXT,
-            updated_at {TS},
-            UNIQUE(allievo_id, giorno, sezione)
-        )''')
-        cur.execute(f'''CREATE TABLE IF NOT EXISTS sessions (
-            token      TEXT PRIMARY KEY,
-            tipo       TEXT DEFAULT 'admin',
-            turno      INTEGER,
-            corso      TEXT,
-            foto_ok    INTEGER DEFAULT 0,
-            created_at {TS}
-        )''')
-        conn.commit()
+    if USE_PG:
+        conn = _pool.getconn()
+        conn.autocommit = True
+        try:
+            cur = conn.cursor()
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS turni (
+                id         {AI} PRIMARY KEY {AIP},
+                numero     INTEGER NOT NULL,
+                corso      TEXT NOT NULL,
+                pwd_hash   TEXT NOT NULL,
+                pwd_plain  TEXT NOT NULL,
+                capoturno  TEXT NOT NULL,
+                email      TEXT,
+                soglia     INTEGER DEFAULT 66,
+                foto_abilitata INTEGER DEFAULT 0,
+                created_at {TS},
+                UNIQUE(numero, corso)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS allievi (
+                id         {AI} PRIMARY KEY {AIP},
+                turno      INTEGER NOT NULL,
+                corso      TEXT NOT NULL,
+                nome       TEXT NOT NULL,
+                foto_url   TEXT,
+                note       TEXT,
+                created_at {TS},
+                UNIQUE(turno, corso, nome)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni (
+                id         {AI} PRIMARY KEY {AIP},
+                allievo_id INTEGER NOT NULL,
+                vkey       TEXT NOT NULL,
+                valore     TEXT,
+                updated_at {TS},
+                UNIQUE(allievo_id, vkey)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni_op (
+                id         {AI} PRIMARY KEY {AIP},
+                allievo_id INTEGER NOT NULL,
+                vkey       TEXT NOT NULL,
+                valore     TEXT,
+                updated_at {TS},
+                UNIQUE(allievo_id, vkey)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS giornaliero (
+                id         {AI} PRIMARY KEY {AIP},
+                allievo_id INTEGER NOT NULL,
+                giorno     INTEGER NOT NULL,
+                sezione    INTEGER NOT NULL,
+                valore     TEXT,
+                nota       TEXT,
+                updated_at {TS},
+                UNIQUE(allievo_id, giorno, sezione)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS sessions (
+                token      TEXT PRIMARY KEY,
+                tipo       TEXT DEFAULT 'admin',
+                turno      INTEGER,
+                corso      TEXT,
+                foto_ok    INTEGER DEFAULT 0,
+                created_at {TS}
+            )''')
+            cur.close()
+        finally:
+            conn.autocommit = False
+            _pool.putconn(conn)
+    else:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS turni (
+                id         {AI} PRIMARY KEY {AIP},
+                numero     INTEGER NOT NULL,
+                corso      TEXT NOT NULL,
+                pwd_hash   TEXT NOT NULL,
+                pwd_plain  TEXT NOT NULL,
+                capoturno  TEXT NOT NULL,
+                email      TEXT,
+                soglia     INTEGER DEFAULT 66,
+                foto_abilitata INTEGER DEFAULT 0,
+                created_at {TS},
+                UNIQUE(numero, corso)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS allievi (
+                id         {AI} PRIMARY KEY {AIP},
+                turno      INTEGER NOT NULL,
+                corso      TEXT NOT NULL,
+                nome       TEXT NOT NULL,
+                foto_url   TEXT,
+                note       TEXT,
+                created_at {TS},
+                UNIQUE(turno, corso, nome)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni (
+                id         {AI} PRIMARY KEY {AIP},
+                allievo_id INTEGER NOT NULL,
+                vkey       TEXT NOT NULL,
+                valore     TEXT,
+                updated_at {TS},
+                UNIQUE(allievo_id, vkey)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS valutazioni_op (
+                id         {AI} PRIMARY KEY {AIP},
+                allievo_id INTEGER NOT NULL,
+                vkey       TEXT NOT NULL,
+                valore     TEXT,
+                updated_at {TS},
+                UNIQUE(allievo_id, vkey)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS giornaliero (
+                id         {AI} PRIMARY KEY {AIP},
+                allievo_id INTEGER NOT NULL,
+                giorno     INTEGER NOT NULL,
+                sezione    INTEGER NOT NULL,
+                valore     TEXT,
+                nota       TEXT,
+                updated_at {TS},
+                UNIQUE(allievo_id, giorno, sezione)
+            )''')
+            cur.execute(f'''CREATE TABLE IF NOT EXISTS sessions (
+                token      TEXT PRIMARY KEY,
+                tipo       TEXT DEFAULT 'admin',
+                turno      INTEGER,
+                corso      TEXT,
+                foto_ok    INTEGER DEFAULT 0,
+                created_at {TS}
+            )''')
+            conn.commit()
 
 init_db()
 
 def migrate_db():
     try:
-        with get_db() as conn:
-            cur = conn.cursor()
-            if USE_PG:
+        if USE_PG:
+            # Per PostgreSQL, le ALTER TABLE richiedono autocommit=True
+            conn = _pool.getconn()
+            conn.autocommit = True
+            try:
+                cur = conn.cursor()
                 # sessions.corso
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='corso'")
                 if not cur.fetchone():
-                    cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT'); conn.commit()
+                    cur.execute('ALTER TABLE sessions ADD COLUMN corso TEXT')
                 # sessions.foto_ok
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='sessions' AND column_name='foto_ok'")
                 if not cur.fetchone():
-                    cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0'); conn.commit()
+                    cur.execute('ALTER TABLE sessions ADD COLUMN foto_ok INTEGER DEFAULT 0')
                 # turni.soglia
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='soglia'")
                 if not cur.fetchone():
-                    cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
+                    cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66')
                 # turni.foto_abilitata
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='foto_abilitata'")
                 if not cur.fetchone():
-                    cur.execute('ALTER TABLE turni ADD COLUMN foto_abilitata INTEGER DEFAULT 0'); conn.commit()
-                # giornaliero table (PG)
+                    cur.execute('ALTER TABLE turni ADD COLUMN foto_abilitata INTEGER DEFAULT 0')
+                # giornaliero table
                 cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='giornaliero'")
                 if not cur.fetchone():
                     cur.execute('''CREATE TABLE IF NOT EXISTS giornaliero (
@@ -304,8 +397,13 @@ def migrate_db():
                         updated_at TIMESTAMP DEFAULT NOW(),
                         UNIQUE(allievo_id, giorno, sezione)
                     )''')
-                    conn.commit()
-            else:
+                cur.close()
+            finally:
+                conn.autocommit = False
+                _pool.putconn(conn)
+        else:
+            with get_db() as conn:
+                cur = conn.cursor()
                 cur.execute("PRAGMA table_info(sessions)")
                 cols = [r[1] for r in cur.fetchall()]
                 if 'corso' not in cols:
@@ -318,7 +416,6 @@ def migrate_db():
                     cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
                 if 'foto_abilitata' not in cols2:
                     cur.execute('ALTER TABLE turni ADD COLUMN foto_abilitata INTEGER DEFAULT 0'); conn.commit()
-                # giornaliero table (SQLite)
                 cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='giornaliero'")
                 if not cur.fetchone():
                     cur.execute('''CREATE TABLE IF NOT EXISTS giornaliero (
