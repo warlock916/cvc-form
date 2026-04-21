@@ -22,34 +22,71 @@ PH = '?'
 
 if DATABASE_URL:
     try:
-        import psycopg2
-        import psycopg2.extras
-        import psycopg2.pool
+        import pg8000
+        import pg8000.native
+        import urllib.parse as _up
         from contextlib import contextmanager
+        import threading
 
-        _db_url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+        _db_url_parsed = _up.urlparse(DATABASE_URL.replace('postgres://', 'postgresql://', 1))
+        _pg_host = _db_url_parsed.hostname
+        _pg_port = _db_url_parsed.port or 5432
+        _pg_db   = _db_url_parsed.path.lstrip('/')
+        _pg_user = _db_url_parsed.username
+        _pg_pass = _db_url_parsed.password
 
-        # Connection pool: min 1, max 10 connessioni
-        _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, _db_url, sslmode='require')
+        # Pool semplice con lock per thread-safety
+        _pool_lock = threading.Lock()
+        _pool_conns = []
+        _pool_max = 5
+
+        def _new_pg_conn():
+            return pg8000.connect(
+                host=_pg_host, port=_pg_port,
+                database=_pg_db, user=_pg_user, password=_pg_pass,
+                ssl_context=True
+            )
+
+        def _get_pg_conn():
+            with _pool_lock:
+                if _pool_conns:
+                    return _pool_conns.pop()
+            return _new_pg_conn()
+
+        def _put_pg_conn(conn):
+            with _pool_lock:
+                if len(_pool_conns) < _pool_max:
+                    try:
+                        conn.rollback()
+                        _pool_conns.append(conn)
+                        return
+                    except Exception:
+                        pass
+            try: conn.close()
+            except Exception: pass
 
         @contextmanager
         def get_db():
-            conn = _pool.getconn()
-            conn.autocommit = False
+            conn = _get_pg_conn()
             try:
                 yield conn
             except Exception:
-                conn.rollback()
+                try: conn.rollback()
+                except Exception: pass
+                try: conn.close()
+                except Exception: pass
                 raise
-            finally:
-                _pool.putconn(conn)
+            else:
+                _put_pg_conn(conn)
 
         # Test connessione
         with get_db() as _test:
-            _test.cursor().execute('SELECT 1')
+            cur = _test.cursor()
+            cur.execute('SELECT 1')
+
         USE_PG = True
         PH = '%s'
-        print(f"[DB] PostgreSQL connesso OK (pool)")
+        print(f"[DB] PostgreSQL connesso OK (pg8000 pool)")
     except Exception as e:
         print(f"[DB] PostgreSQL fallito ({e}), uso SQLite")
         USE_PG = False
@@ -231,7 +268,7 @@ def init_db():
     TS  = "TIMESTAMP DEFAULT NOW()" if USE_PG else "TEXT DEFAULT (datetime('now'))"
 
     if USE_PG:
-        conn = _pool.getconn()
+        conn = _new_pg_conn()
         conn.autocommit = True
         try:
             cur = conn.cursor()
@@ -294,8 +331,8 @@ def init_db():
             )''')
             cur.close()
         finally:
-            conn.autocommit = False
-            _pool.putconn(conn)
+            try: conn.close()
+            except: pass
     else:
         with get_db() as conn:
             cur = conn.cursor()
@@ -364,7 +401,7 @@ def migrate_db():
     try:
         if USE_PG:
             # Per PostgreSQL, le ALTER TABLE richiedono autocommit=True
-            conn = _pool.getconn()
+            conn = _new_pg_conn()
             conn.autocommit = True
             try:
                 cur = conn.cursor()
@@ -400,7 +437,8 @@ def migrate_db():
                 cur.close()
             finally:
                 conn.autocommit = False
-                _pool.putconn(conn)
+                try: conn.close()
+                except: pass
         else:
             with get_db() as conn:
                 cur = conn.cursor()
