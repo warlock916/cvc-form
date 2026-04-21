@@ -54,6 +54,8 @@ input:focus,select:focus{outline:none;border-color:var(--blu2);}
 .allievo-tab img{width:20px;height:20px;border-radius:50%;object-fit:cover;}
 .allievo-tab .del-x{background:rgba(255,255,255,.3);border:none;color:inherit;width:16px;height:16px;border-radius:50%;font-size:.68rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;}
 .allievo-tab .del-x:hover{background:rgba(200,0,0,.7);color:white;}
+.allievo-tab .ren-x{background:rgba(255,255,255,.2);border:none;color:inherit;width:16px;height:16px;border-radius:50%;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;}
+.allievo-tab .ren-x:hover{background:rgba(255,255,255,.5);}
 .foto-box{display:flex;align-items:center;gap:14px;background:#f8f9fa;border:2px dashed var(--bordo);border-radius:8px;padding:12px;margin-bottom:14px;}
 .foto-circle{width:66px;height:66px;border-radius:50%;background:#dde;border:3px solid var(--azzurro);display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;cursor:pointer;flex-shrink:0;}
 .foto-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
@@ -345,7 +347,7 @@ table.riepilogo td{padding:6px 9px;}
       <h3 style="color:var(--blu);margin:14px 0 6px;font-size:.88rem;">Turni e Password</h3>
       <div style="overflow-x:auto;">
         <table class="turni-table">
-          <thead><tr><th>Turno</th><th>Corso</th><th>Capo Turno</th><th>Email</th><th>Password</th><th>Soglia</th><th>Allievi</th><th></th></tr></thead>
+          <thead><tr><th>Turno</th><th>Corso</th><th>Capo Turno</th><th>Email</th><th>Password</th><th>Soglia</th><th>Foto</th><th>Allievi</th><th></th></tr></thead>
           <tbody id="turni-body"></tbody>
         </table>
       </div>
@@ -643,7 +645,7 @@ async function caricaAllievi(){
 }
 
 function renderAllievi(){
-  document.getElementById('allievi-tabs').innerHTML=allievi.map(a=>'<div class="allievo-tab '+(a.id===currentAllievo?'active':'')+'" onclick="selectAllievo('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'')+escH(a.nome)+'<button class="del-x" onclick="event.stopPropagation();eliminaAllievo('+a.id+')">x</button></div>').join('');
+  document.getElementById('allievi-tabs').innerHTML=allievi.map(a=>'<div class="allievo-tab '+(a.id===currentAllievo?'active':'')+'" onclick="selectAllievo('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'')+escH(a.nome)+'<button class="ren-x" onclick="event.stopPropagation();apriRinomina('+a.id+',this)" title="Rinomina">&#9998;</button><button class="del-x" onclick="event.stopPropagation();eliminaAllievo('+a.id+')" title="Elimina">&#x2715;</button></div>').join('');
   document.getElementById('allievi-tabs-op').innerHTML=allievi.map(a=>'<div class="allievo-tab '+(a.id===currentAllievoOp?'active':'')+'" onclick="selectAllievoOp('+a.id+')">'+(a.foto_url?'<img src="'+a.foto_url+'?t='+Date.now()+'" alt="">':'')+escH(a.nome)+'</div>').join('');
   if(currentAllievo)renderAllievoContent();
   else document.getElementById('allievo-content').innerHTML='<div style="text-align:center;padding:32px;color:#aaa;"><div style="font-size:2.5rem">&#128100;</div><p>Aggiungi un allievo per iniziare</p></div>';
@@ -834,7 +836,7 @@ function salvaNote(aid,value){
   noteTimers[aid]=setTimeout(async function(){try{await fetchAuth(API+'/api/allievi/'+aid+'/note',{method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},body:JSON.stringify({note:value})});showToast();}catch{}},1000);
 }
 
-function apriUploadFoto(id){if(!session.fotoAbilitata){alert('Caricamento foto non abilitato.\nUsa la password speciale foto.');return;}fotoUploadId=id;document.getElementById('foto-input').click();}
+function apriUploadFoto(id){if(!session.fotoAbilitata){alert('Il caricamento foto non è abilitato per questo turno.\nContatta l\'amministratore per abilitare la funzione.');return;}fotoUploadId=id;document.getElementById('foto-input').click();}
 async function uploadFoto(input){
   const file=input.files[0];if(!file)return;const id=fotoUploadId;if(!id||!session){input.value='';return;}
   const formData=new FormData();formData.append('foto',file);
@@ -1147,6 +1149,36 @@ function importaExcel(input){
   reader.readAsArrayBuffer(file);
 }
 
+// ── Rinomina allievo ──────────────────────────────────────────────────────────
+function apriRinomina(id, btnEl){
+  var a=allievi.find(function(x){return x.id===id;});
+  if(!a)return;
+  var nomeAttuale=a.nome;
+  // Crea input inline temporaneo
+  var tab=btnEl.closest?btnEl.closest('.allievo-tab'):btnEl.parentElement;
+  // Usa un semplice prompt - è più affidabile su mobile
+  var nuovo=window.prompt('Rinomina allievo:',nomeAttuale);
+  if(!nuovo||!nuovo.trim()||nuovo.trim()===nomeAttuale)return;
+  nuovo=nuovo.trim();
+  rinominaAllievo(id,nuovo);
+}
+
+async function rinominaAllievo(id,nuovoNome){
+  try{
+    var res=await fetchAuth(API+'/api/allievi/'+id+'/rinomina',{
+      method:'PUT',headers:{'Content-Type':'application/json','X-Auth-Token':session.token},
+      body:JSON.stringify({nome:nuovoNome})
+    });
+    if(!res)return;
+    var d=await res.json();
+    if(!res.ok){alert(d.error||'Errore rinomina');return;}
+    var a=allievi.find(function(x){return x.id===id;});
+    if(a)a.nome=d.nome;
+    renderAllievi();
+    showToast();
+  }catch(e){alert('Errore: '+e.message);}
+}
+
 async function aggiungiAllievoSilenzioso(nome){
   try{
     var res=await fetchAuth(API+'/api/allievi/'+session.turno,{
@@ -1283,6 +1315,14 @@ async function loadStats(){
             +'<button class="btn btn-sm btn-primary" onclick="aggiornaSoglia('+t.numero+',\''+corso_esc+'\')" title="Salva soglia">&#10003;</button>'
           +'</div>'
         +'</td>'
+        +'<td style="text-align:center;">'
+        +'<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;">'
+          +'<input type="checkbox" '+(t.foto_abilitata?'checked':'')+' '
+            +'onchange="toggleFoto('+t.numero+',\''+corso_esc+'\',this.checked)" '
+            +'style="width:15px;height:15px;cursor:pointer;">'
+          +'<span style="font-size:.75rem;">'+(t.foto_abilitata?'ON':'OFF')+'</span>'
+        +'</label>'
+        +'</td>'
         +'<td style="text-align:center">'+t.n_allievi+'</td>'
         +'<td><button class="btn btn-danger btn-sm" onclick="cancellaTurno('+t.numero+',\''+corso_esc+'\')">&#128465;</button></td>'
         +'</tr>';
@@ -1325,6 +1365,22 @@ async function aggiornaSoglia(numero, corso){
     }
   }catch(e){alert('Errore: '+e.message);}
 }
+async function toggleFoto(numero,corso,abilitata){
+  if(!adminToken){alert('Accedi come admin.');return;}
+  try{
+    var res=await fetch(API+'/api/turno/'+numero+'/foto',{
+      method:'PUT',headers:{'Content-Type':'application/json','X-Admin-Token':adminToken},
+      body:JSON.stringify({corso:corso,abilitata:abilitata})
+    });
+    var d=await res.json();
+    if(!res.ok)throw new Error(d.error||'Errore');
+    // Aggiorna label ON/OFF vicino al checkbox
+    var lbl=document.querySelector('[data-foto-lbl="'+numero+'-'+corso+'"]');
+    if(lbl)lbl.textContent=abilitata?'ON':'OFF';
+    loadStats();
+  }catch(e){alert('Errore: '+e.message);}
+}
+
 async function adminExportCSV(){if(!adminToken){alert('Accedi come admin.');return;}try{const res=await fetch(API+'/api/export/csv',{headers:{'X-Admin-Token':adminToken}});if(!res.ok)throw new Error('Nessun dato');const blob=await res.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CVC_Istruttori_valutazioni.csv';a.click();URL.revokeObjectURL(a.href);}catch(e){alert(e.message);}}
 async function backupDB(){if(!adminToken){alert('Accedi come admin.');return;}const res=await fetch(API+'/api/backup',{headers:{'X-Admin-Token':adminToken}});if(!res.ok){alert('Errore backup');return;}const blob=await res.blob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='CVC_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);}
 async function cancellaFoto(){if(!adminToken){alert('Accedi come admin.');return;}if(!confirm('Cancellare TUTTE le foto?'))return;try{const res=await fetch(API+'/api/foto/all',{method:'DELETE',headers:{'X-Admin-Token':adminToken}});const d=await res.json();if(!res.ok)throw new Error(d.error||'Errore');alert('Cancellate '+d.cancellate+' foto.');}catch(e){alert('Errore: '+e.message);}}
