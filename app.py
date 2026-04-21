@@ -82,32 +82,32 @@ CORSI_VALIDI = ['ADV', 'Istruttori1', 'IstruttoriC3']
 
 SCHEMA_ADV = [
     {'macro': '1. Navigazione a vela', 'items': [
-        {'peso': 2, 'desc': "È in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato"},
-        {'peso': 3, 'desc': "È in grado di eseguire le manovre fondamentali (gavitello, ancoraggio, regolazione e cambio velatura)"},
-        {'peso': 3, 'desc': "È in grado di eseguire le manovre fondamentali con metodo e consapevolezza (SN+VI)"},
+        {'peso': 2, 'desc': "E' in grado di condurre con buona sicurezza e autonomia sia una deriva che un cabinato.(T) E' in grado di valutare e navigare nelle zone piu sicure, rispettando i perimetri di navigazione(SN)"},
+        {'peso': 3, 'desc': "E' in grado di eseguire le manovre fondamentali (gavitello, ancoraggio, regolazione e cambio velatura) prevedendo il comportamenti della barca e dell'equipaggio per garantirne la sufficiente sicurezza"},
+        {'peso': 3, 'desc': "E' in grado di eseguire le manovre fondamentali(accosto ai mezzi, prende gavitelli, quickstop, ancoraggi, adegua velatura) con metodo e consapevolezza, avendo in chiaro l'obbiettivo dell'esercizio(SN+VI)"},
     ]},
     {'macro': '2. Mezzi e procedure di sicurezza', 'items': [
-        {'peso': 2, 'desc': "È in grado di preparare i mezzi di sicurezza e gestire motore nel rispetto delle norme ambientali"},
-        {'peso': 3, 'desc': "È in grado di collaborare con l'istruttore durante le manovre di sicurezza"},
-        {'peso': 3, 'desc': "Si comporta coerentemente alle procedure di sicurezza, in mare e a terra"},
+        {'peso': 2, 'desc': "E' in grado di preparare i mezzi di sicurezza sotto tutti punti di vista(sgotto, rabbocco, dotazioni), accendere, spegnere il motore e l'uso dell'invertitore nel rispetto delle norme ambientali"},
+        {'peso': 3, 'desc': "E' in grado di collaborare con l'istruttore durante le manovre di sicurezza(lancio cima e uso capra), essendo consapevole della manovra e dei rischi. Il governo dei mezzi di sicurezza rimane in carico solo all'istruttore."},
+        {'peso': 3, 'desc': "Si comporta coerentemente alle procedure di sicurezza, utilizzando attrezzature e comportamenti atti a prevenire l'emergenza, in mare e a terra"},
     ]},
     {'macro': '3. Didattica alla lavagna e in mare', 'items': [
-        {'peso': 2, 'desc': "È in grado di comprendere le indicazioni didattiche del CT e fare da facilitatore agli allievi"},
+        {'peso': 2, 'desc': "E' in grado di comprendere le indicazione didattiche del CT e fare da facilitatore agli allievi"},
     ]},
-    {'macro': '4. Capacità gestionale e lavoro in team', 'items': [
-        {'peso': 2, 'desc': "È in grado di supportare il gruppo istruttori sia a terra che in mare"},
-        {'peso': 2, 'desc': "È disponibile ad accrescere la propria esperienza collaborando con il team istruttori AdV"},
-        {'peso': 1, 'desc': "Condivide e promuove le norme di comportamento (carta dei valori, inclusione, sostenibilità)"},
+    {'macro': '4. Capacita gestionale e lavoro in team', 'items': [
+        {'peso': 2, 'desc': "E' in grado di supportare il gruppo istruttori sia terra che in mare al fine di facilitare il raggiungimento degli obiettivi da essi comunicati per le attivita a terra e a mare."},
+        {'peso': 2, 'desc': "E' disponibile ad accrescere la propria esperienza collaborando con il team istruttori AdV"},
+        {'peso': 1, 'desc': "Condivide e promuove le norme di comportamento in rispetto delle persone (carta dei valori, inclusione, dell'ambiente e della sostenibilita)"},
     ]},
-    {'macro': '5. Consapevolezza del ruolo – Motivazione Impegno Disponibilità', 'items': [
-        {'peso': 2, 'desc': "È consapevole di essere modello di riferimento a terra e a mare"},
-        {'peso': 2, 'desc': "È in grado di mantenere la calma in situazioni di stress, sostiene e incoraggia gli altri"},
-        {'peso': 2, 'desc': "È sempre un elemento proattivo, non si tira indietro o delega ad altri"},
+    {'macro': '5. Consapevolezza del ruolo - Motivazione Impegno Disponibilita', 'items': [
+        {'peso': 2, 'desc': "E' consapevole di essere modello di riferimento a terra e a mare, e quindi coerente nei comportamenti (atteggiamento e abbigliamento) anche rispetto al Codice Etico del CVC"},
+        {'peso': 2, 'desc': "E' in grado di mantenere la calma in situazioni di stress, sostiene e incoraggio gli altri, garantendo anche l'inclusione"},
+        {'peso': 2, 'desc': "E' sempre un elemento proattivo su quello che c'e da fare, non si tira indietro o delega ad altri"},
     ]},
-    {'macro': '6. Capacità organizzative e aspetti logistici', 'items': [
-        {'peso': 2, 'desc': "È in grado di supportare e facilitare le attività a mare (scalo, caletta, veleria) e a terra"},
-        {'peso': 1, 'desc': "È in grado di prevenire e risolvere piccole avarie coordinandosi con CT e staff"},
-        {'peso': 1, 'desc': "Conosce le procedure di prevenzione ed emergenza a terra e a mare"},
+    {'macro': '6. Capacita organizzative e aspetti logistici', 'items': [
+        {'peso': 2, 'desc': "E' in grado di supportare e facilitare le attivita a mare (scalo, caletta, veleria) e a terra (orari) gestendo la comandata (cucina, sala e bagni)"},
+        {'peso': 1, 'desc': "E' in grado di prevenire attraverso le sue verifiche e risolvere piccole avarie coordinandosi in primis con il suo CT e poi le funzioni dello staff."},
+        {'peso': 1, 'desc': "Conosce le procedure di prevenzione (incendi e d infortuni) ed emergenza (incendio, infortuni) procedure a terra a mare."},
     ]},
 ]
 
