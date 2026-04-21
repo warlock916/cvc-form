@@ -218,6 +218,7 @@ def init_db():
             capoturno  TEXT NOT NULL,
             email      TEXT,
             soglia     INTEGER DEFAULT 66,
+            foto_abilitata INTEGER DEFAULT 0,
             created_at {TS},
             UNIQUE(numero, corso)
         )''')
@@ -286,6 +287,10 @@ def migrate_db():
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='soglia'")
                 if not cur.fetchone():
                     cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
+                # turni.foto_abilitata
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='turni' AND column_name='foto_abilitata'")
+                if not cur.fetchone():
+                    cur.execute('ALTER TABLE turni ADD COLUMN foto_abilitata INTEGER DEFAULT 0'); conn.commit()
                 # giornaliero table (PG)
                 cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='giornaliero'")
                 if not cur.fetchone():
@@ -311,6 +316,8 @@ def migrate_db():
                 cols2 = [r[1] for r in cur.fetchall()]
                 if 'soglia' not in cols2:
                     cur.execute('ALTER TABLE turni ADD COLUMN soglia INTEGER DEFAULT 66'); conn.commit()
+                if 'foto_abilitata' not in cols2:
+                    cur.execute('ALTER TABLE turni ADD COLUMN foto_abilitata INTEGER DEFAULT 0'); conn.commit()
                 # giornaliero table (SQLite)
                 cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='giornaliero'")
                 if not cur.fetchone():
@@ -441,7 +448,10 @@ def turno_login():
                 return jsonify({'error': 'Password errata per questo turno'}), 401
 
         token = secrets.token_hex(32)
-        foto_ok = 1 if pwd == FOTO_PWD else 0
+        # foto abilitata se: password foto speciale OPPURE admin ha abilitato per questo turno
+        foto_ok_pwd = 1 if pwd == FOTO_PWD else 0
+        foto_ok_turno = 1 if turno_dict.get('foto_abilitata') else 0
+        foto_ok = 1 if (foto_ok_pwd or foto_ok_turno) else 0
         cur.execute(
             f"INSERT INTO sessions(token,tipo,turno,corso,foto_ok) VALUES({PH},{PH},{PH},{PH},{PH})",
             (token, 'turno', numero, corso, foto_ok)
@@ -452,7 +462,7 @@ def turno_login():
         'token': token, 'tipo': 'turno', 'turno': numero,
         'corso': turno_dict['corso'], 'capoturno': turno_dict['capoturno'],
         'soglia': turno_dict.get('soglia') if turno_dict.get('soglia') is not None else 66,
-        'fotoAbilitata': pwd == FOTO_PWD
+        'fotoAbilitata': bool(foto_ok)
     })
 
 # ── Allievi ────────────────────────────────────────────────────────────────────
@@ -542,6 +552,47 @@ def delete_allievo(allievo_id):
         cur.execute(f'DELETE FROM allievi WHERE id={PH}', (allievo_id,))
         conn.commit()
     return jsonify({'ok': True})
+
+@app.route('/api/allievi/<int:allievo_id>/rinomina', methods=['PUT'])
+def rinomina_allievo(allievo_id):
+    token = request.headers.get('X-Auth-Token', '')
+    d = request.json or {}
+    nuovo_nome = d.get('nome', '').strip()
+    if not nuovo_nome:
+        return jsonify({'error': 'Nome obbligatorio'}), 400
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(f'SELECT turno, corso FROM allievi WHERE id={PH}', (allievo_id,))
+        row = cur.fetchone()
+        if not row: return jsonify({'error': 'Non trovato'}), 404
+        turno = row[0] if USE_PG else row['turno']
+        corso = row[1] if USE_PG else row['corso']
+        if not check_turno_auth(turno, corso, token):
+            return jsonify({'error': 'Non autorizzato'}), 401
+        # Verifica che il nuovo nome non esista già
+        cur.execute(f'SELECT id FROM allievi WHERE turno={PH} AND corso={PH} AND nome={PH} AND id!={PH}',
+                    (turno, corso, nuovo_nome, allievo_id))
+        if cur.fetchone():
+            return jsonify({'error': 'Esiste già un allievo con questo nome'}), 400
+        cur.execute(f'UPDATE allievi SET nome={PH} WHERE id={PH}', (nuovo_nome, allievo_id))
+        conn.commit()
+    return jsonify({'ok': True, 'nome': nuovo_nome})
+
+@app.route('/api/turno/<int:numero>/foto', methods=['PUT'])
+@check_admin
+def toggle_foto(numero):
+    d = request.json or {}
+    corso = d.get('corso', '')
+    abilitata = 1 if d.get('abilitata') else 0
+    if not corso: return jsonify({'error': 'Corso obbligatorio'}), 400
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(f'UPDATE turni SET foto_abilitata={PH} WHERE numero={PH} AND corso={PH}',
+                    (abilitata, numero, corso))
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Turno non trovato'}), 404
+        conn.commit()
+    return jsonify({'ok': True, 'abilitata': bool(abilitata)})
 
 @app.route('/api/allievi/<int:allievo_id>/note', methods=['PUT'])
 def update_note(allievo_id):
@@ -805,7 +856,7 @@ def get_stats():
         n_turni = cur.fetchone()[0]
         cur.execute('SELECT COUNT(DISTINCT capoturno) FROM turni')
         n_istr = cur.fetchone()[0]
-        cur.execute('SELECT numero, corso, capoturno, email, pwd_plain, soglia FROM turni ORDER BY numero, corso')
+        cur.execute('SELECT numero, corso, capoturno, email, pwd_plain, soglia, foto_abilitata FROM turni ORDER BY numero, corso')
         turni = rows_to_dicts(cur.fetchall(), cur)
 
         # Conteggio allievi per turno/corso
